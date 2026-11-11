@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => { // Quarto puts dependency 
     const state = random();
     s.setItem('glc:verifier', verifier);
     s.setItem('glc:state', state);
-    s.setItem('glc:return', location.href);
+    s.setItem('glc:return', `${location.href.split('#')[0]}#gitlab-comments`); // land back on the comments, not the page top
     const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
     location.href = `${gitlab}/oauth/authorize?${new URLSearchParams({ client_id: c.clientId, redirect_uri: redirectUri,
       response_type: 'code', state, scope: 'api', code_challenge: challenge, code_challenge_method: 'S256' })}`;
