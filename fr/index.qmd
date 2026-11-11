@@ -1,0 +1,8 @@
+---
+title: Guide d'installation
+lang: fr
+gitlab-comments:
+  page: index.qmd # same discussion as the English page
+---
+
+Une page de documentation. L'interface des commentaires s'affiche en français.

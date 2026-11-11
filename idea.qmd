@@ -1,0 +1,8 @@
+---
+title: "Idea: dark mode"
+gitlab-comments:
+  vote-label: Support this idea?
+  sign-in-label: Authorize GitLab to vote
+---
+
+A product feature proposal. Page-level settings merge over `_quarto.yml`.

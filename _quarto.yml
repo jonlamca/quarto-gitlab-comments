@@ -1,0 +1,17 @@
+project:
+  type: website
+  preview:
+    port: 4200 # register http://localhost:4200/ as the OAuth redirect URI
+
+website:
+  title: GitLab comments demo
+  navbar:
+    left: [index.qmd, idea.qmd, fr/index.qmd]
+
+filters:
+  - gitlab-comments
+
+gitlab-comments:
+  project: your-group/feedback # target repository (full path)
+  client-id: YOUR_APPLICATION_ID # GitLab OAuth app, non-confidential, scope `api`
+  origin: docs
