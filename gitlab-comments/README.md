@@ -13,10 +13,10 @@ It needs GitLab 16.1 or later, which every gitlab.com project already runs. 16.1
 1. Install the extension:
 
    ```bash
-   quarto add jonlamca/quarto-gitlab-comments
+   quarto add jonlamca/quarto-gitlab-comments/gitlab-comments
    ```
 
-   You can also copy `_extensions/gitlab-comments` into your project.
+   Installing from a subfolder needs a recent Quarto (1.11 works). With an older one, copy `gitlab-comments/_extensions/gitlab-comments` from this repository into your project.
 
 2. In GitLab, go to **User/Group settings → Applications** and add an application:
    - Turn **Confidential** off.
@@ -82,6 +82,8 @@ Comments are shown as written and never machine-translated. In GitLab, each comm
 
 ## Try it
 
+Run these from this folder (`gitlab-comments/`), which holds a demo site.
+
 ```bash
 quarto render && grep -q 'data-origin="docs"' _site/index.html && echo ok
 ```
@@ -94,4 +96,4 @@ quarto preview
 
 ## License
 
-MIT. See [LICENSE](LICENSE). Third-party components are listed in [THIRD_PARTY.md](THIRD_PARTY.md).
+MIT. See [LICENSE](../LICENSE). Third-party components are listed in [THIRD_PARTY.md](THIRD_PARTY.md).
