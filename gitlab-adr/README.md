@@ -125,7 +125,7 @@ Votes are GitLab reactions and comments are GitLab comments, so everything also 
 
 ## Try it locally
 
-Set `clientId` and `project` in `config.json`, register `http://localhost:8000/` as a redirect URI, then run:
+Set `clientId` and `project` in `config.json`, register `http://localhost:8000/` as a redirect URI, then run this from this folder (`gitlab-adr/`):
 
 ```bash
 python3 -m http.server 8000
@@ -135,4 +135,4 @@ Open http://localhost:8000/.
 
 ## License
 
-MIT. See [LICENSE](LICENSE). Third-party components are listed in [THIRD_PARTY.md](THIRD_PARTY.md).
+MIT. See [LICENSE](../LICENSE). Third-party components are listed in [THIRD_PARTY.md](THIRD_PARTY.md).
