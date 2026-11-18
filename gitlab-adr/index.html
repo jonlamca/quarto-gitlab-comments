@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture decisions</title>
+  <!-- GC Design System, pinned as GCDS recommends. -->
+  <link rel="stylesheet" href="https://cdn.design-system.alpha.canada.ca/@cdssnc/gcds-components@0.47.0/dist/gcds/gcds.css">
+  <script type="module" src="https://cdn.design-system.alpha.canada.ca/@cdssnc/gcds-components@0.47.0/dist/gcds/gcds.esm.js"></script>
+  <style>
+    /* GCDS fonts. The gcds-fonts stylesheets on the CDN still have placeholder paths, so the faces are declared here. */
+    @font-face { font-family: "Lato"; font-weight: 700; font-display: swap;
+      src: url("https://cdn.design-system.alpha.canada.ca/@cdssnc/gcds-fonts@0.2.2/lato/gcds-lato.woff2") format("woff2"); }
+    @font-face { font-family: "Noto Sans"; font-weight: 400; font-display: swap;
+      src: url("https://cdn.design-system.alpha.canada.ca/@cdssnc/gcds-fonts@0.2.2/noto-sans/gcds-noto-sans-regular.woff2") format("woff2"); }
+    @font-face { font-family: "Noto Sans"; font-weight: 700; font-display: swap;
+      src: url("https://cdn.design-system.alpha.canada.ca/@cdssnc/gcds-fonts@0.2.2/noto-sans/gcds-noto-sans-bold.woff2") format("woff2"); }
+
+    /* Plain HTML (rendered ADRs, lists, the chair table) styled with GCDS tokens. Components style themselves. */
+    body { margin: 0; font: var(--gcds-font-text); color: var(--gcds-text-primary); background: var(--gcds-bg-white); }
+    .adr-md { max-width: var(--gcds-text-character-limit); overflow-wrap: anywhere; }
+    .adr-md :is(h2, h3, h4) { font: var(--gcds-font-h3); margin: var(--gcds-spacing-500) 0 var(--gcds-spacing-200); }
+    .adr-md :is(p, ul, ol, table, pre, blockquote) { margin: 0 0 var(--gcds-spacing-300); }
+    .adr-md a, .adr-table a { color: var(--gcds-link-default); }
+    .adr-md :is(code, pre) { font-family: var(--gcds-font-families-monospace); font-size: 0.9em; background: var(--gcds-bg-light); }
+    .adr-md pre { padding: var(--gcds-spacing-200); overflow-x: auto; }
+    .adr-md blockquote { margin-left: 0; padding-left: var(--gcds-spacing-300); border-left: var(--gcds-border-width-lg) solid var(--gcds-border-default); }
+    .adr-md img { max-width: 100%; }
+    .adr-note { font: var(--gcds-font-text-small); }
+    .adr-note > :last-child { margin-bottom: var(--gcds-spacing-100); }
+    :is(.adr-md, .adr-table) :is(th, td) { border: var(--gcds-border-width-sm) solid var(--gcds-border-default);
+      padding: var(--gcds-spacing-100) var(--gcds-spacing-150); text-align: left; vertical-align: top; }
+    .adr-md table, .adr-table { border-collapse: collapse; }
+    .adr-table { font: var(--gcds-font-text-small); width: 100%; }
+    .adr-scroll { overflow-x: auto; margin-bottom: var(--gcds-spacing-400); }
+    .adr-list { list-style: none; padding: 0; margin: 0 0 var(--gcds-spacing-500); }
+    .adr-list li, .adr-thread { border-top: var(--gcds-border-width-sm) solid var(--gcds-color-grayscale-100); padding: var(--gcds-spacing-200) 0; }
+    .adr-votes { display: flex; flex-wrap: wrap; gap: var(--gcds-spacing-100); margin-bottom: var(--gcds-spacing-400); }
+    .adr-form { margin-top: var(--gcds-spacing-300); }
+    .adr-subtitle { font: var(--gcds-font-h3); color: var(--gcds-text-secondary); margin: 0 0 var(--gcds-spacing-300); }
+    /* Department signature from config.json, in the header's signature slot; sized like the GC signature. */
+    .adr-signature img { display: block; height: var(--gcds-signature-signature-height); width: auto; max-width: 100%; }
+    /* Footer: the Canada wordmark only, as the Federal Identity Program requires, with no links or text. */
+    .adr-footer { background: var(--gcds-footer-sub-background); margin-top: var(--gcds-spacing-800); padding: var(--gcds-spacing-400) 0; }
+    .adr-footer gcds-signature { margin-left: auto; width: var(--gcds-footer-sub-signature-width); max-height: var(--gcds-footer-sub-signature-max-height); }
+    @media (max-width: 48em) {
+      body { font: var(--gcds-font-text-mobile); }
+      .adr-md :is(h2, h3, h4), .adr-subtitle { font: var(--gcds-font-h3-mobile); }
+      .adr-footer gcds-signature { width: var(--gcds-footer-sub-signature-sm-width); }
+    }
+  </style>
+  <script type="module" src="adr.js"></script>
+</head>
+<body>
+  <!-- adr.js adds the gcds-header here, with the signature from config.json. All settings live in config.json. -->
+  <gcds-container id="main-content" main-container size="xl" centered tag="main">
+    <div id="adr"></div>
+  </gcds-container>
+  <footer class="adr-footer">
+    <gcds-container size="xl" centered><gcds-signature type="wordmark"></gcds-signature></gcds-container>
+  </footer>
+</body>
+</html>

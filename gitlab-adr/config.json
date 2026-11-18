@@ -1,0 +1,18 @@
+{
+  "gitlab": "https://gitlab.com",
+  "project": "your-group/adr",
+  "clientId": "YOUR_APPLICATION_ID",
+  "folder": "adr",
+  "title": {
+    "en": "StatCan Developer Program",
+    "fr": "Programme des développeurs de StatCan"
+  },
+  "subtitle": {
+    "en": "TIGER (technology, integration, governance, engineering review)",
+    "fr": "TIGER (technologie, intégration, gouvernance, examen de l’ingénierie)"
+  },
+  "signature": {
+    "en": { "src": "statcan-signature-en.svg", "alt": "Statistics Canada", "href": "https://www.statcan.gc.ca/en/start" },
+    "fr": { "src": "statcan-signature-fr.svg", "alt": "Statistique Canada", "href": "https://www.statcan.gc.ca/fr/debut" }
+  }
+}
