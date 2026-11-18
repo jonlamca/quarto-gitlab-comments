@@ -37,25 +37,27 @@
     .adr-list li, .adr-thread { border-top: var(--gcds-border-width-sm) solid var(--gcds-color-grayscale-100); padding: var(--gcds-spacing-200) 0; }
     .adr-votes { display: flex; flex-wrap: wrap; gap: var(--gcds-spacing-100); margin-bottom: var(--gcds-spacing-400); }
     .adr-form { margin-top: var(--gcds-spacing-300); }
+    .adr-subtitle { font: var(--gcds-font-h3); color: var(--gcds-text-secondary); margin: 0 0 var(--gcds-spacing-300); }
+    /* Department signature from config.json, in the header's signature slot; sized like the GC signature. */
+    .adr-signature img { display: block; height: var(--gcds-signature-signature-height); width: auto; max-width: 100%; }
+    /* Footer: the Canada wordmark only, as the Federal Identity Program requires, with no links or text. */
+    .adr-footer { background: var(--gcds-footer-sub-background); margin-top: var(--gcds-spacing-800); padding: var(--gcds-spacing-400) 0; }
+    .adr-footer gcds-signature { margin-left: auto; width: var(--gcds-footer-sub-signature-width); max-height: var(--gcds-footer-sub-signature-max-height); }
     @media (max-width: 48em) {
       body { font: var(--gcds-font-text-mobile); }
-      .adr-md :is(h2, h3, h4) { font: var(--gcds-font-h3-mobile); }
+      .adr-md :is(h2, h3, h4), .adr-subtitle { font: var(--gcds-font-h3-mobile); }
+      .adr-footer gcds-signature { width: var(--gcds-footer-sub-signature-sm-width); }
     }
   </style>
   <script type="module" src="adr.js"></script>
 </head>
 <body>
-  <!-- lang-href is required by GCDS; adr.js switches language in place instead of following it. -->
-  <gcds-header lang-href="#" skip-to-href="#main-content"></gcds-header>
+  <!-- adr.js adds the gcds-header here, with the signature from config.json. All settings live in config.json. -->
   <gcds-container id="main-content" main-container size="xl" centered tag="main">
-    <!-- Configuration: the GitLab project that holds the ADRs, and the OAuth application (non-confidential, scope api,
-         redirect URI = this page's URL). -->
-    <div id="adr"
-      data-gitlab="https://gitlab.com"
-      data-project="your-group/adr"
-      data-client-id="YOUR_APPLICATION_ID"
-      data-folder="adr"></div>
+    <div id="adr"></div>
   </gcds-container>
-  <gcds-footer display="compact"></gcds-footer>
+  <footer class="adr-footer">
+    <gcds-container size="xl" centered><gcds-signature type="wordmark"></gcds-signature></gcds-container>
+  </footer>
 </body>
 </html>

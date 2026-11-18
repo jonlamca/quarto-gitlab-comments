@@ -2,10 +2,12 @@
 // A proposal is a merge request that adds or changes adr/NNNN-slug-en.md and adr/NNNN-slug-fr.md. The default branch
 // holds accepted decisions. Committee members vote 👍/👎 on the merge request and comment; the chair (anyone GitLab
 // lets merge) accepts or rejects. No backend: OAuth PKCE in the browser, then GitLab's CORS-enabled APIs.
-// Config: data-* on #adr in index.html. Routes: #/ (list), #/adr/<NNNN-slug> (one decision), #/chair (chair view).
+// Settings: config.json next to index.html, set at deploy time. Routes: #/ (list), #/adr/<NNNN-slug> (one decision),
+// #/chair (chair view). The committee's terms of reference are ADR 0000, so changing them goes through the same vote.
 
 const el = document.getElementById('adr');
-const c = el.dataset;
+const c = await fetch('config.json').then((r) => r.json()).catch(() => ({}));
+const TERMS = '0000-terms-of-reference';
 const gitlab = (c.gitlab || 'https://gitlab.com').replace(/\/+$/, '');
 const folder = (c.folder || 'adr').replace(/^\/+|\/+$/g, '');
 const redirectUri = location.origin + location.pathname; // register this exact URL on the GitLab application
@@ -14,7 +16,7 @@ const s = sessionStorage;
 // Interface text. French follows Canadian typography: no space before ? ; ! and a non-breaking space before :.
 const LABELS = {
   en: {
-    title: 'Architecture decisions', signIn: 'Sign in with GitLab', loading: 'Loading…', error: 'GitLab error:',
+    title: 'Architecture decisions', terms: 'Terms of reference', noConfig: 'Set project and clientId in config.json.', signIn: 'Sign in with GitLab', loading: 'Loading…', error: 'GitLab error:',
     intro: 'Proposed and accepted architecture decision records. Committee members vote and comment on proposals; the chair accepts or rejects them.',
     noAccess: "You don't have access to", proposed: 'Proposed', accepted: 'Accepted', statusProposed: 'Proposed',
     statusAccepted: 'Accepted', none: 'None yet.', by: 'by', acceptedOn: 'Accepted', yourVote: 'Your vote:',
@@ -31,7 +33,7 @@ const LABELS = {
     confirmReject: 'Reject this proposal? This closes the merge request.',
   },
   fr: {
-    title: "Décisions d'architecture", signIn: 'Se connecter avec GitLab', loading: 'Chargement…', error: 'Erreur GitLab :',
+    title: "Décisions d'architecture", terms: 'Cadre de référence', noConfig: 'Indiquez project et clientId dans config.json.', signIn: 'Se connecter avec GitLab', loading: 'Chargement…', error: 'Erreur GitLab :',
     intro: "Dossiers de décisions d'architecture proposés et acceptés. Les membres du comité votent et commentent les propositions; la présidence les accepte ou les rejette.",
     noAccess: "Vous n'avez pas accès à", proposed: 'Proposées', accepted: 'Acceptées', statusProposed: 'Proposée',
     statusAccepted: 'Acceptée', none: 'Aucune pour le moment.', by: 'par', acceptedOn: 'Acceptée le',
@@ -56,13 +58,25 @@ let lang = LABELS[stored] ? stored : navigator.language?.startsWith('fr') ? 'fr'
 let L = LABELS[lang];
 const other = () => (lang === 'en' ? 'fr' : 'en');
 
-// Switch language in place: GCDS header and footer watch their own lang attribute; the app re-renders from memory.
+const tr = (v) => (v && typeof v === 'object' ? v[lang] ?? v.en : v); // config text: "x" or { "en": "x", "fr": "y" }
+const site = () => tr(c.title) || L.title;
+
+// The header is built here so its signature slot exists before GCDS first renders it (GCDS only checks then).
+// With a "signature" in config.json it shows that department signature; without one, the Government of Canada's.
+const header = document.createElement('gcds-header');
+header.setAttribute('lang-href', '#'); // required by GCDS; the click is intercepted below to switch in place
+header.setAttribute('skip-to-href', '#main-content');
+if (c.signature) header.innerHTML = '<div slot="signature" class="adr-signature"></div>';
+document.body.prepend(header);
+
+// Switch language in place: GCDS components watch their own lang attribute; the app re-renders from memory.
 function setLang(l) {
   lang = l;
   L = LABELS[l];
   document.documentElement.lang = l;
-  document.querySelectorAll('gcds-header, gcds-footer').forEach((x) => x.setAttribute('lang', l));
-  document.title = L.title;
+  document.querySelectorAll('gcds-header, .adr-footer gcds-signature').forEach((x) => x.setAttribute('lang', l));
+  const sig = tr(c.signature);
+  if (sig) header.querySelector('.adr-signature').innerHTML = `<a href="${h(sig.href || '#/')}"><img src="${h(sig.src)}" alt="${h(sig.alt)}"></a>`;
   try { localStorage.setItem('adr:lang', l); } catch { /* private mode: language just isn't remembered */ }
 }
 
@@ -221,6 +235,8 @@ const title = (a) => {
   return t?.match(/^#\s+(.+)$/m)?.[1].trim() || a.slug;
 };
 const label = (a) => `${a.slug.match(/^\d+/)?.[0] ?? ''} · ${title(a)}`.replace(/^ · /, '');
+const intro = () => `<gcds-heading tag="h1" margin-bottom="200">${h(site())}</gcds-heading>
+  ${c.subtitle ? `<p class="adr-subtitle">${h(tr(c.subtitle))}</p>` : ''}<gcds-text>${L.intro}</gcds-text>`;
 const back = () => `<p><gcds-link href="#/">← ${L.all}</gcds-link></p>`;
 const missingLangs = (a) => ['en', 'fr'].filter((l) => !a.prop[l] && !a.main[l]);
 
@@ -233,9 +249,8 @@ function listView() {
   };
   const prop = adrs.filter((a) => a.mr);
   const acc = adrs.filter((a) => a.main.en || a.main.fr);
-  return `<gcds-heading tag="h1">${L.title}</gcds-heading>
-    <gcds-text>${L.intro}</gcds-text>
-    <p><gcds-link href="#/chair">${L.chair}</gcds-link></p>
+  return `${intro()}
+    <p>${adrs.some((x) => x.slug === TERMS) ? `<gcds-link href="#/adr/${TERMS}">${L.terms}</gcds-link> · ` : ''}<gcds-link href="#/chair">${L.chair}</gcds-link></p>
     <gcds-heading tag="h2">${L.proposed}</gcds-heading>
     ${prop.length ? `<ul class="adr-list">${prop.map((a) => item(a, `${L.by} ${h(a.mr.author?.name)} · 👍 ${votes(a.mr, 'thumbsup').length} · 👎 ${votes(a.mr, 'thumbsdown').length}${yourVote(a.mr)}`)).join('')}</ul>` : muted(L.none)}
     <gcds-heading tag="h2">${L.accepted}</gcds-heading>
@@ -313,14 +328,16 @@ function chairView() {
 
 function render() {
   const [view] = route();
-  el.innerHTML = failed ? muted(`${L.error} ${h(failed)}`)
-    : !me ? `<gcds-heading tag="h1">${L.title}</gcds-heading><gcds-text>${L.intro}</gcds-text>
-      <gcds-button data-action="signin">${L.signIn}</gcds-button>`
+  document.title = view === 'adr' && doc ? `${label(doc.a)} – ${site()}` : site();
+  el.innerHTML = !c.project || !c.clientId ? muted(L.noConfig)
+    : failed ? muted(`${L.error} ${h(failed)}`)
+    : !me ? `${intro()}<gcds-button data-action="signin">${L.signIn}</gcds-button>`
     : !project ? muted(`${L.noAccess} ${h(c.project)}.`)
     : view === 'adr' ? docView() : view === 'chair' ? chairView() : listView();
 }
 
 async function go() {
+  if (!c.project || !c.clientId) return render();
   el.innerHTML = muted(L.loading);
   failed = null;
   try { await load(); } catch (e) { failed = e.message; }

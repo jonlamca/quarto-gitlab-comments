@@ -7,11 +7,11 @@ A small website where a committee proposes, discusses, votes on and records Arch
 - The **chair** accepts a proposal, which merges it, or rejects it, which closes it.
 - The default branch holds the **accepted** decisions.
 
-The site is two static files, `index.html` and `adr.js`. They read GitLab in the browser, so there's no backend or build step, and new proposals show up without redeploying. It uses [GC Design System](https://design-system.alpha.canada.ca/) components and is fully bilingual on one page: the header's English/Français link switches every label and the ADR text in place.
+The site is a few static files: `index.html`, `adr.js` and the deploy-time settings in `config.json`. They read GitLab in the browser, so there's no backend or build step, and new proposals show up without redeploying. It uses [GC Design System](https://design-system.alpha.canada.ca/) components and is fully bilingual on one page: the header's English/Français link switches every label and the ADR text in place.
 
 ## Set up
 
-1. **Create a GitLab project for the ADRs**, ideally private. GitLab's roles are the access control:
+1. **Create a GitLab project for the ADRs**, ideally private. Copy `template/adr/` into it to start with terms of reference (see [Terms of reference](#terms-of-reference)). GitLab's roles are the access control:
 
    | Role | Can |
    |---|---|
@@ -24,22 +24,35 @@ The site is two static files, `index.html` and `adr.js`. They read GitLab in the
    - Choose the scope `api`.
    - Set the redirect URI to the exact URL people will open the site at, for example `https://adr.example.ca/`. For local testing, also add `http://localhost:8000/`.
 
-3. **Edit the settings** on `<div id="adr">` in `index.html`:
+3. **Fill in `config.json`** at deploy time. Nothing else needs editing:
 
-   ```html
-   <div id="adr"
-     data-gitlab="https://gitlab.com"
-     data-project="your-group/adr"
-     data-client-id="YOUR_APPLICATION_ID"
-     data-folder="adr"></div>
+   ```json
+   {
+     "gitlab": "https://gitlab.com",
+     "project": "your-group/adr",
+     "clientId": "YOUR_APPLICATION_ID",
+     "folder": "adr",
+     "title": { "en": "StatCan Developer Program", "fr": "Programme des développeurs de StatCan" },
+     "subtitle": { "en": "TIGER (technology, integration, governance, engineering review)", "fr": "TIGER (technologie, intégration, gouvernance, examen de l’ingénierie)" },
+     "signature": {
+       "en": { "src": "statcan-signature-en.svg", "alt": "Statistics Canada", "href": "https://www.statcan.gc.ca/en/start" },
+       "fr": { "src": "statcan-signature-fr.svg", "alt": "Statistique Canada", "href": "https://www.statcan.gc.ca/fr/debut" }
+     }
+   }
    ```
 
-   - `data-gitlab`: your GitLab instance.
-   - `data-project`: the ADR project's full path.
-   - `data-client-id`: the application ID from step 2.
-   - `data-folder`: the folder that holds the ADR files.
+   | Setting | What it is |
+   |---|---|
+   | `gitlab` | Your GitLab instance. |
+   | `project` | The ADR project's full path. Required. |
+   | `clientId` | The application ID from step 2. Required. |
+   | `folder` | The folder that holds the ADR files. |
+   | `title`, `subtitle` | The home page heading and the line under it. Each is one string, or an `en` and `fr` pair. |
+   | `signature` | The department signature in the header, per language: image file, alt text and link. Leave it out to show the Government of Canada signature. |
 
-4. **Deploy** `index.html` and `adr.js` to any static host over HTTPS, such as GitLab Pages or object storage.
+   **Signature files:** this repository doesn't include Statistics Canada's signature. Get the official Federal Identity Program signature files (English and French, SVG) from your communications team, and put them next to `index.html` with the names in `config.json`.
+
+4. **Deploy** `index.html`, `adr.js`, `config.json` and the signature files to any static host over HTTPS, such as GitLab Pages or object storage.
 
 ## Writing an ADR
 
@@ -80,9 +93,15 @@ Ce qui devient plus facile ou plus difficile.
 
 To propose one, create a branch, add both files, and open a merge request into the default branch. GitLab's Web IDE does all three. Any open merge request that changes a `*-en.md` or `*-fr.md` file in the ADR folder appears as a proposal. To change an accepted decision, open a merge request that edits its files.
 
+## Terms of reference
+
+The committee's terms of reference are ADR 0000, `adr/0000-terms-of-reference-en.md` and `-fr.md`. They cover purpose, membership, how to propose, voting period, quorum and the decision rule, how the chair decides, and when the terms are reviewed. Because they're an ADR, changing them goes through the same proposal and vote as any decision, and the home page links to them.
+
+`template/adr/` has a starter version in both languages. Copy it into the ADR repository and replace everything in [brackets]. Have a fluent reader check the French.
+
 ## Using the site
 
-- **All decisions (`#/`):** proposed decisions with their votes and your own vote, then accepted decisions with the date and final tally.
+- **Home (`#/`):** the title and subtitle from `config.json`, links to the terms of reference and the chair view, then proposed decisions with their votes and your own vote, then accepted decisions with the date and final tally.
 - **A decision (`#/adr/0007-adopt-postgres`):**
   - The ADR, rendered by GitLab in the current language. If one language's file is missing, a notice says so and the other language is shown.
   - For a proposal: the vote buttons and the merge request's discussion. Each member gets one vote, so voting For removes an Against and the other way round. Hovering over a vote shows who voted.
@@ -100,12 +119,13 @@ Votes are GitLab reactions and comments are GitLab comments, so everything also 
 - **Sizes:** the site reads the first 100 open and 100 merged merge requests, ADR files, members, threads and votes.
 - **Competing proposals:** if two open merge requests change the same ADR, the site shows the first one.
 - **Images:** images in a proposal may not show until it's merged, because GitLab links them to the default branch.
-- **Translation review:** the French interface text uses Canadian typography. Have a fluent speaker review it.
+- **Translation review:** the French interface text, the French title and subtitle in `config.json`, and the French terms of reference template use Canadian typography. Have a fluent speaker review them.
+- **Footer:** the footer shows only the Canada wordmark, which the Federal Identity Program requires on Government of Canada sites. It has no links or text.
 - **Tested against:** the current gitlab.com API. The minimum self-managed GitLab version hasn't been checked.
 
 ## Try it locally
 
-Set `data-client-id` and `data-project`, register `http://localhost:8000/` as a redirect URI, then run:
+Set `clientId` and `project` in `config.json`, register `http://localhost:8000/` as a redirect URI, then run:
 
 ```bash
 python3 -m http.server 8000
