@@ -57,11 +57,12 @@ const LABELS = {
     reject: 'Reject', closeMeeting: 'Close meeting', closeHint: 'Merges the accepted proposals and takes the others out of this merge request.',
     confirmClose: 'Close this meeting? The accepted proposals are merged; the others are taken out of the merge request.', acceptedList: 'Accepted:', takenOut: 'Taken out:',
     changed: 'New commits were pushed after this page loaded. Check the proposals and votes, then try again.',
-    membersTitle: 'Committee members', membersIntro: 'Only voting members’ votes count, and the chair view lists the voting members who haven’t voted. Each person’s group is shown next to their name.',
+    membersTitle: 'Committee members', membersIntro: 'Only voting members’ votes count, and the chair view lists the voting members who haven’t voted.',
     noListTitle: 'No member list yet', noList: 'Everyone with Reporter access or higher counts as a member until the chair saves a list on the Members page.',
     filter: 'Find by name or username', candidates: 'People with Reporter access or higher to the GitLab project, including those who get it through a group. To add someone else, give them access in GitLab first.',
     present: 'Present as slides', prev: 'Previous', next: 'Next', exit: 'Exit',
     meta: { status: 'Status', date: 'Date', 'decision-makers': 'Decision-makers', consulted: 'Consulted', informed: 'Informed' },
+    editMembers: 'Edit member list', editTitle: 'Edit committee members', cancel: 'Cancel', colName: 'Name', colVoting: 'Voting',
     noAccessNote: 'no access', through: 'access through', save: 'Save member list', peopleHint: 'Tick the members, then set whether each one votes and the group they represent.',
     voting: 'Voting', nonVoting: 'Non-voting', votingOf: 'Voting status for', group: 'Group represented', groupOf: 'Group represented by',
   },
@@ -92,11 +93,12 @@ const LABELS = {
     closeHint: 'Fusionne les propositions acceptées et retire les autres de cette demande de fusion.',
     confirmClose: 'Clôturer cette réunion? Les propositions acceptées seront fusionnées; les autres seront retirées de la demande de fusion.',
     acceptedList: 'Acceptées\u00a0:', takenOut: 'Retirées\u00a0:', changed: 'De nouveaux commits ont été poussés après le chargement de cette page. Vérifiez les propositions et les votes, puis réessayez.',
-    membersTitle: 'Membres du comité', membersIntro: "Seuls les votes des membres votants comptent, et la vue de la présidence indique les membres votants qui n'ont pas encore voté. Le groupe de chaque personne figure à côté de son nom.",
+    membersTitle: 'Membres du comité', membersIntro: "Seuls les votes des membres votants comptent, et la vue de la présidence indique les membres votants qui n'ont pas encore voté.",
     noListTitle: 'Pas encore de liste des membres', noList: "Toute personne ayant le rôle Reporter ou un rôle supérieur compte comme membre jusqu'à ce que la présidence enregistre une liste dans la page Membres.",
     filter: "Chercher par nom ou nom d'utilisateur", candidates: "Personnes ayant le rôle Reporter ou un rôle supérieur dans le projet GitLab, y compris par l'intermédiaire d'un groupe. Pour ajouter quelqu'un d'autre, donnez-lui d'abord accès dans GitLab.",
     present: 'Présenter en diapositives', prev: 'Précédente', next: 'Suivante', exit: 'Quitter',
     meta: { status: 'Statut', date: 'Date', 'decision-makers': 'Personnes décisionnaires', consulted: 'Personnes consultées', informed: 'Personnes informées' },
+    editMembers: 'Modifier la liste des membres', editTitle: 'Modifier les membres du comité', cancel: 'Annuler', colName: 'Nom', colVoting: 'Droit de vote',
     noAccessNote: 'sans accès', through: 'accès par', save: 'Enregistrer la liste des membres', peopleHint: 'Cochez les membres, puis indiquez pour chaque personne si elle vote et le groupe qu\'elle représente.',
     voting: 'Avec droit de vote', nonVoting: 'Sans droit de vote', votingOf: 'Droit de vote de', group: 'Groupe représenté', groupOf: 'Groupe représenté par',
   },
@@ -662,7 +664,20 @@ function chairView() {
 
 // The member list is picked from the project's people, so nobody types usernames. Each member is voting or non-voting and
 // represents a group (suggested from the groups already listed, to keep the names consistent). Saving commits members.json.
+// The Members page shows the list; people who can push to the main branch get a separate edit screen (#/members/edit).
 function membersView() {
+  const rows = [...members].sort((x, y) => x.name.localeCompare(y.name)).map((u) => `<tr><th scope="row">${h(u.name)}
+    <span class="adr-handle">@${h(u.username)}</span></th><td>${u.voting ? L.voting : L.nonVoting}</td><td>${h(u.group) || '—'}</td></tr>`);
+  return `${back()}<gcds-heading tag="h1">${L.membersTitle}</gcds-heading><gcds-text>${L.membersIntro}</gcds-text>
+    ${hasList ? '' : notice(L.noListTitle, L.noList)}
+    ${project.userPermissions.pushCode ? `<p><gcds-button button-role="secondary" type="link" href="#/members/edit">${L.editMembers}</gcds-button></p>` : ''}
+    ${rows.length ? `<div class="adr-scroll"><table class="adr-table"><thead><tr><th scope="col">${L.colName}</th><th scope="col">${L.colVoting}</th>
+      <th scope="col">${L.group}</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>` : muted(L.none)}`;
+}
+
+// Edit screen: people are picked from the project's members, so nobody types usernames. Each member is voting or non-voting
+// and represents a group (suggested from the groups already listed, to keep the names consistent). Saving commits members.json.
+function membersEdit() {
   const listed = new Set(hasList ? members.map((u) => u.username) : []);
   const groups = [...new Set(members.map((u) => u.group).filter(Boolean))].sort();
   const fields = (u) => `<span class="adr-fields"><select class="adr-voting" aria-label="${h(`${L.votingOf} ${u.name}`)}">
@@ -672,16 +687,14 @@ function membersView() {
     .sort((x, y) => x.name.localeCompare(y.name));
   const noAccess = (u) => !people.some((p) => p.username === u.username);
   const access = (u) => (noAccess(u) ? ` · ${L.noAccessNote}` : people.find((p) => p.username === u.username).via ? ` · ${L.through} ${h(people.find((p) => p.username === u.username).via)}` : '');
-  return `${back()}<gcds-heading tag="h1">${L.membersTitle}</gcds-heading><gcds-text>${L.membersIntro}</gcds-text>
-    ${hasList ? '' : notice(L.noListTitle, L.noList)}
-    ${project.userPermissions.pushCode ? `<gcds-input input-id="adr-filter" name="filter" type="search" label="${L.filter}" hint="${L.candidates}"></gcds-input>
-      <p>${caption(L.peopleHint)}</p><datalist id="adr-groups">${groups.map((g) => `<option value="${h(g)}">`).join('')}</datalist>
-      <ul class="adr-people">${candidates.map((u) => `<li data-q="${h(`${u.name} ${u.username} ${memberOf(u)?.group || ''}`.toLowerCase())}"><label>
-        <input type="checkbox" value="${h(u.username)}" data-name="${h(u.name)}" ${listed.has(u.username) ? 'checked' : ''}>
-        ${h(u.name)} <span class="adr-handle">@${h(u.username)}${access(u)}</span></label>${fields(u)}</li>`).join('')}</ul>
-      <gcds-button data-action="save-members">${L.save}</gcds-button>`
-    : `<ul class="adr-list">${members.map((u) => `<li>${h(u.name)} <span class="adr-handle">@${h(u.username)}</span> · ${u.voting ? L.voting : L.nonVoting}${
-      u.group ? ` · ${h(u.group)}` : ''}</li>`).join('')}</ul>`}`;
+  return `<p><gcds-link href="#/members">← ${L.membersTitle}</gcds-link></p><gcds-heading tag="h1">${L.editTitle}</gcds-heading>
+    <gcds-input input-id="adr-filter" name="filter" type="search" label="${L.filter}" hint="${L.candidates}"></gcds-input>
+    <p>${caption(L.peopleHint)}</p><datalist id="adr-groups">${groups.map((g) => `<option value="${h(g)}">`).join('')}</datalist>
+    <ul class="adr-people">${candidates.map((u) => `<li data-q="${h(`${u.name} ${u.username} ${memberOf(u)?.group || ''}`.toLowerCase())}"><label>
+      <input type="checkbox" value="${h(u.username)}" data-name="${h(u.name)}" ${listed.has(u.username) ? 'checked' : ''}>
+      ${h(u.name)} <span class="adr-handle">@${h(u.username)}${access(u)}</span></label>${fields(u)}</li>`).join('')}</ul>
+    <p class="adr-actions"><gcds-button data-action="save-members">${L.save}</gcds-button>
+      <gcds-button button-role="secondary" type="link" href="#/members">${L.cancel}</gcds-button></p>`;
 }
 
 function render() {
@@ -692,7 +705,8 @@ function render() {
     : failed ? muted(`${L.error} ${h(failed)}`)
     : !me ? `${intro()}<gcds-button data-action="signin">${L.signIn}</gcds-button>`
     : !project ? muted(`${L.noAccess} ${h(c.project)}.`)
-    : path === 'chair' ? chairView() : path === 'members' ? membersView() : path ? docView() : listView();
+    : path === 'chair' ? chairView() : path === 'members' ? membersView()
+    : path === 'members/edit' ? (project.userPermissions.pushCode ? membersEdit() : membersView()) : path ? docView() : listView();
   resized.disconnect();
   el.querySelectorAll('.adr-with-margin, .adr-margin > *').forEach((x) => resized.observe(x));
 }
@@ -877,6 +891,7 @@ function present(from) {
 el.addEventListener('click', async (e) => {
   const b = e.target.closest('gcds-button'); // disabled gcds-buttons swallow the click
   if (!b) return;
+  if (b.getAttribute('type') === 'link') return; // a link styled as a button: let it navigate
   if (b.dataset.action === 'signin') return signIn();
   if (b.dataset.action === 'slides') return present(b);
   const open = async (html) => { // swap the button for a comment box and move focus into it (autofocus is blocked after a click)
@@ -930,7 +945,8 @@ el.addEventListener('click', async (e) => {
     }
     if (b.dataset.action === 'save-members') {
       await saveMembers();
-      return go();
+      location.hash = '#/members'; // back to the list, reloaded with the change
+      return;
     }
   } catch (err) {
     alert(`GitLab: ${err.message}`); // nothing re-rendered, so typed text is kept
