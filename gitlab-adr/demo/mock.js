@@ -7,7 +7,8 @@
   window.__calls = [];
   const u = (username, name) => ({ username, name });
   const alex = u('alex', 'Alex Tremblay'), priya = u('priya', 'Priya Shah'), marco = u('marco', 'Marco Rossi'),
-    dana = u('dana', 'Dana Kim'), sam = u('sam', 'Sam Okafor'), bob = u('bob', 'Bob Guest'), lee = u('lee', 'Lee Wong');
+    dana = u('dana', 'Dana Kim'), sam = u('sam', 'Sam Okafor'), bob = u('bob', 'Bob Guest'), lee = u('lee', 'Lee Wong'),
+    kim = u('kim', 'Kim Nguyen'), ravi = u('ravi', 'Ravi Patel');
   const award = (name, user) => ({ name, user });
   const ago = (d) => new Date(Date.now() - d * 864e5).toISOString();
   let nextNote = 100;
@@ -171,6 +172,14 @@
         projectMembers: { nodes: people.map(([user, a]) => ({ user, accessLevel: { integerValue: a } })) },
         open: { nodes: Object.values(mrs).filter((m) => m.state === 'opened') },
         merged: { nodes: merged.sort((a, b) => b.mergedAt.localeCompare(a.mergedAt)) } } } });
+    }
+    if (query.includes('projectMembers(')) { // direct members, plus people with access through groups, a few per page
+      const nodes = [...people.map(([user, a]) => ({ __typename: 'ProjectMember', user, accessLevel: { integerValue: a } })),
+        { __typename: 'GroupMember', user: kim, accessLevel: { integerValue: 30 }, group: { fullPath: 'statcan/architecture' } }, // inherited only
+        { __typename: 'GroupMember', user: priya, accessLevel: { integerValue: 20 }, group: { fullPath: 'statcan' } }, // also a direct member
+        { __typename: 'GroupMember', user: ravi, accessLevel: { integerValue: 20 }, group: { fullPath: 'statcan/data-science' } }]; // shared group
+      const from = +(v.after || 0);
+      return json({ data: { project: { projectMembers: { pageInfo: { hasNextPage: from + 4 < nodes.length, endCursor: String(from + 4) }, nodes: nodes.slice(from, from + 4) } } } });
     }
     if (query.includes('blobs(')) return json({ data: { project: { repository: { blobs: { nodes: v.paths.filter((p) => files[`${v.r}:${p}`] != null).map((p) => ({ path: p, rawTextBlob: files[`${v.r}:${p}`], oid: oid(files[`${v.r}:${p}`]) })) } } } } });
     if (query.includes('{ diffHeadSha } } }')) return json({ data: { project: { mergeRequest: { diffHeadSha: mrs[v.iid].diffHeadSha } } } });

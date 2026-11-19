@@ -59,10 +59,10 @@ const LABELS = {
     changed: 'New commits were pushed after this page loaded. Check the proposals and votes, then try again.',
     membersTitle: 'Committee members', membersIntro: 'Only voting members’ votes count, and the chair view lists the voting members who haven’t voted. Each person’s group is shown next to their name.',
     noListTitle: 'No member list yet', noList: 'Everyone with Reporter access or higher counts as a member until the chair saves a list on the Members page.',
-    filter: 'Find by name or username', candidates: 'People with Reporter access or higher to the GitLab project. To add someone else, give them access in GitLab first.',
+    filter: 'Find by name or username', candidates: 'People with Reporter access or higher to the GitLab project, including those who get it through a group. To add someone else, give them access in GitLab first.',
     present: 'Present as slides', prev: 'Previous', next: 'Next', exit: 'Exit',
     meta: { status: 'Status', date: 'Date', 'decision-makers': 'Decision-makers', consulted: 'Consulted', informed: 'Informed' },
-    noAccessNote: 'no access', save: 'Save member list', peopleHint: 'Tick the members, then set whether each one votes and the group they represent.',
+    noAccessNote: 'no access', through: 'access through', save: 'Save member list', peopleHint: 'Tick the members, then set whether each one votes and the group they represent.',
     voting: 'Voting', nonVoting: 'Non-voting', votingOf: 'Voting status for', group: 'Group represented', groupOf: 'Group represented by',
   },
   fr: {
@@ -94,10 +94,10 @@ const LABELS = {
     acceptedList: 'Acceptées\u00a0:', takenOut: 'Retirées\u00a0:', changed: 'De nouveaux commits ont été poussés après le chargement de cette page. Vérifiez les propositions et les votes, puis réessayez.',
     membersTitle: 'Membres du comité', membersIntro: "Seuls les votes des membres votants comptent, et la vue de la présidence indique les membres votants qui n'ont pas encore voté. Le groupe de chaque personne figure à côté de son nom.",
     noListTitle: 'Pas encore de liste des membres', noList: "Toute personne ayant le rôle Reporter ou un rôle supérieur compte comme membre jusqu'à ce que la présidence enregistre une liste dans la page Membres.",
-    filter: "Chercher par nom ou nom d'utilisateur", candidates: "Personnes ayant le rôle Reporter ou un rôle supérieur dans le projet GitLab. Pour ajouter quelqu'un d'autre, donnez-lui d'abord accès dans GitLab.",
+    filter: "Chercher par nom ou nom d'utilisateur", candidates: "Personnes ayant le rôle Reporter ou un rôle supérieur dans le projet GitLab, y compris par l'intermédiaire d'un groupe. Pour ajouter quelqu'un d'autre, donnez-lui d'abord accès dans GitLab.",
     present: 'Présenter en diapositives', prev: 'Précédente', next: 'Suivante', exit: 'Quitter',
     meta: { status: 'Statut', date: 'Date', 'decision-makers': 'Personnes décisionnaires', consulted: 'Personnes consultées', informed: 'Personnes informées' },
-    noAccessNote: 'sans accès', save: 'Enregistrer la liste des membres', peopleHint: 'Cochez les membres, puis indiquez pour chaque personne si elle vote et le groupe qu\'elle représente.',
+    noAccessNote: 'sans accès', through: 'accès par', save: 'Enregistrer la liste des membres', peopleHint: 'Cochez les membres, puis indiquez pour chaque personne si elle vote et le groupe qu\'elle représente.',
     voting: 'Avec droit de vote', nonVoting: 'Sans droit de vote', votingOf: 'Droit de vote de', group: 'Groupe représenté', groupOf: 'Groupe représenté par',
   },
 };
@@ -148,9 +148,13 @@ const MR = `id iid title webUrl state sourceBranch targetBranch diffHeadSha deta
   userPermissions { canMerge createNote }`;
 const LIST = `query($p: ID!, $f: String!, $r: String) { currentUser { username name }
   project(fullPath: $p) { userPermissions { pushCode } repository { rootRef tree(path: $f, ref: $r, recursive: true) { blobs(first: 100) { nodes { path } } } }
-    projectMembers(first: 100) { nodes { accessLevel { integerValue } user { name username } } }
     open: mergeRequests(state: opened, first: 100) { nodes { ${MR} } }
     merged: mergeRequests(state: merged, sort: MERGED_AT_DESC, first: 100) { nodes { iid title targetBranch mergedAt diffStats { path } } } } }`;
+// Everyone with access to the project: direct members, people who inherit access from its parent groups, and members of
+// groups the project (or a parent group) is shared with.
+const MEMBERS = `query($p: ID!, $after: String) { project(fullPath: $p) {
+  projectMembers(first: 100, after: $after, relations: [DIRECT, INHERITED, INVITED_GROUPS, SHARED_INTO_ANCESTORS]) {
+    pageInfo { hasNextPage endCursor } nodes { __typename accessLevel { integerValue } user { name username } ... on GroupMember { group { fullPath } } } } } }`;
 const BLOBS = `query($p: ID!, $r: String!, $paths: [String!]!) { project(fullPath: $p) { repository {
   blobs(ref: $r, paths: $paths, first: 100) { nodes { path rawTextBlob oid } } } } }`;
 const DETAIL = `query($p: ID!, $iid: String!) { project(fullPath: $p) { mergeRequest(iid: $iid) { ${MR} diffRefs { baseSha headSha startSha }
@@ -180,6 +184,26 @@ async function gql(query, variables) {
 const oids = {}; // `${ref}:${path}` -> GitLab's id for that file's content, which changes with every edit
 const blobsAt = (r, paths) => (paths.length ? gql(BLOBS, { p: c.project, r, paths })
   .then((x) => Object.fromEntries(x.project.repository.blobs.nodes.map((b) => { oids[`${r}:${b.path}`] = b.oid; return [b.path, b.rawTextBlob]; }))) : {});
+// One entry per person, with their highest access, and the group it comes through ('' when they're a direct member).
+// ponytail: reads up to 1,000 entries; raise the cap if the project's groups are bigger.
+async function projectMembers() {
+  const all = new Map();
+  let after = null;
+  for (let page = 0; page < 10; page++) {
+    const pm = (await gql(MEMBERS, { p: c.project, after })).project?.projectMembers;
+    for (const m of pm?.nodes || []) {
+      if (!m.user) continue;
+      const e = all.get(m.user.username) ?? { ...m.user, level: 0, via: null };
+      e.level = Math.max(e.level, m.accessLevel.integerValue);
+      const via = m.__typename === 'GroupMember' ? m.group?.fullPath ?? '' : '';
+      if (!via) e.via = ''; else e.via ??= via;
+      all.set(m.user.username, e);
+    }
+    if (!pm?.pageInfo.hasNextPage) break;
+    after = pm.pageInfo.endCursor;
+  }
+  return [...all.values()];
+}
 const detail = async (iid) => (await gql(DETAIL, { p: c.project, iid })).project.mergeRequest;
 const headOf = async (iid) => (await gql(HEAD, { p: c.project, iid })).project.mergeRequest.diffHeadSha;
 
@@ -338,14 +362,13 @@ async function load() {
   doc = null;
   me = null;
   if (!s.getItem('adr:token')) return;
-  const d = await gql(LIST, { p: c.project, f: folder, r: c.branch || null });
+  const [d, pm] = await Promise.all([gql(LIST, { p: c.project, f: folder, r: c.branch || null }), projectMembers()]);
   me = d.currentUser;
   project = d.project;
   if (!me || !project) return;
   rootRef = c.branch || project.repository.rootRef;
-  const pm = project.projectMembers.nodes.filter((m) => m.user);
-  people = pm.filter((m) => m.accessLevel.integerValue >= 20).map((m) => m.user);
-  maintainers = new Set(pm.filter((m) => m.accessLevel.integerValue >= 40).map((m) => m.user.username));
+  people = pm.filter((m) => m.level >= 20).map(({ username, name, via }) => ({ username, name, via }));
+  maintainers = new Set(pm.filter((m) => m.level >= 40).map((m) => m.username));
   const rfc = (mr) => mr.targetBranch === rootRef && pattern.test(mr.title); // meetings merge into the record branch
   meetings = project.open.nodes.filter(rfc);
   byKey = {};
@@ -600,13 +623,14 @@ function membersView() {
   const candidates = [...people, ...members.filter((u) => !people.some((p) => p.username === u.username))]
     .sort((x, y) => x.name.localeCompare(y.name));
   const noAccess = (u) => !people.some((p) => p.username === u.username);
+  const access = (u) => (noAccess(u) ? ` · ${L.noAccessNote}` : people.find((p) => p.username === u.username).via ? ` · ${L.through} ${h(people.find((p) => p.username === u.username).via)}` : '');
   return `${back()}<gcds-heading tag="h1">${L.membersTitle}</gcds-heading><gcds-text>${L.membersIntro}</gcds-text>
     ${hasList ? '' : notice(L.noListTitle, L.noList)}
     ${project.userPermissions.pushCode ? `<gcds-input input-id="adr-filter" name="filter" type="search" label="${L.filter}" hint="${L.candidates}"></gcds-input>
       <p>${caption(L.peopleHint)}</p><datalist id="adr-groups">${groups.map((g) => `<option value="${h(g)}">`).join('')}</datalist>
       <ul class="adr-people">${candidates.map((u) => `<li data-q="${h(`${u.name} ${u.username} ${memberOf(u)?.group || ''}`.toLowerCase())}"><label>
         <input type="checkbox" value="${h(u.username)}" data-name="${h(u.name)}" ${listed.has(u.username) ? 'checked' : ''}>
-        ${h(u.name)} <span class="adr-handle">@${h(u.username)}${noAccess(u) ? ` · ${L.noAccessNote}` : ''}</span></label>${fields(u)}</li>`).join('')}</ul>
+        ${h(u.name)} <span class="adr-handle">@${h(u.username)}${access(u)}</span></label>${fields(u)}</li>`).join('')}</ul>
       <gcds-button data-action="save-members">${L.save}</gcds-button>`
     : `<ul class="adr-list">${members.map((u) => `<li>${h(u.name)} <span class="adr-handle">@${h(u.username)}</span> · ${u.voting ? L.voting : L.nonVoting}${
       u.group ? ` · ${h(u.group)}` : ''}</li>`).join('')}</ul>`}`;
