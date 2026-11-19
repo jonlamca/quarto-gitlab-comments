@@ -97,7 +97,7 @@ Ce que nous ferons.
 Ce qui devient plus facile ou plus difficile.
 ```
 
-To put proposals on a meeting's agenda, add their files to that meeting's branch. Someone opens one merge request per meeting into the default branch, named to match `titlePattern`, for example `2026-11-20 - Meeting`; GitLab's Web IDE can create the branch, files and merge request. Each ADR in it is a separate proposal with its own vote, comments and decision. Supporting files, such as images, link to GitLab and are merged with the meeting. To change an accepted decision, add an edit of its files to a meeting. Markdown files without a language suffix are shown as they are, in both languages.
+To put proposals on a meeting's agenda, add their files to that meeting's branch. Someone opens one merge request per meeting into the default branch, named to match `titlePattern`, for example `2026-11-20 - Meeting`; GitLab's Web IDE can create the branch, files and merge request. Each ADR in it is a separate proposal with its own vote, comments and decision. Other files in the merge request, such as images, aren't listed on the site and are merged with the meeting. To change an accepted decision, add an edit of its files to a meeting. Markdown files without a language suffix are shown as they are, in both languages.
 
 ## Committee members
 
@@ -118,7 +118,7 @@ The committee's terms of reference are ADR 0000, `0000-terms-of-reference-en.md`
 - **Home (`#/`):** the title and subtitle from `config.json`; links to the terms of reference, the member list and the chair view; each open meeting with its proposals, their votes, your vote and any decision; then accepted decisions (the `-en.md` and `-fr.md` files in the ADR folder) with the date they were accepted.
 - **A proposal (its file's path, for example `#/adr/0007-adopt-postgres-en.md`):**
   - The file, rendered by GitLab. The address names the language: switching language moves to the `-fr.md` file without reloading, and a link to a `-fr.md` file opens in French. If one language's file is missing, a notice says so and the other language is shown.
-  - The other proposals and files at the same meeting.
+  - The other proposals at the same meeting.
   - **Margin comments:** on wide screens each paragraph has a margin beside it, as in a word processor, with its comment threads as cards and a **Comment** button that appears on hover or keyboard focus. Commented paragraphs are highlighted. On narrow screens the margin sits below the paragraph. `marginComments` in `config.json` turns this off.
   - **Vote:** 👍 For and 👎 Against. Each member gets one vote per proposal, so voting For removes an Against and the other way round. Hovering over a vote shows who voted. Reactions from anyone who isn't a voting member, including non-voting members, are shown as not counted. Voting stops once the chair records a decision.
   - **Comments on this file:** threads about the proposal as a whole, plus margin comments that can't be placed beside a paragraph, such as those on a line that has since changed. With `fileComments` set to `false` there's no box to start one, and the section only appears when it has threads to show.
@@ -138,7 +138,7 @@ Votes are GitLab reactions on a **ballot comment** that the site adds to each pr
 - **Sizes:** the site reads the first 100 open and 100 merged merge requests, ADR files, file changes in a merge request, members, threads and votes.
 - **Competing proposals:** if two open meetings change the same file, the site shows the first one.
 - **Ballots:** if two people cast the very first vote on a proposal at the same moment, GitLab can end up with two ballot comments; the site counts the first one. Decisions count only from people with Maintainer access.
-- **Closing a meeting:** supporting files (anything that isn't Markdown) are merged with the meeting, whichever proposal they belong to. Closing waits up to 20 seconds for GitLab to process the commit that takes proposals out; if GitLab is slower, the merge fails and the chair clicks **Close meeting** again. Meetings from forks aren't supported, since the site commits to the meeting's branch.
+- **Closing a meeting:** files that aren't Markdown, such as images, are merged with the meeting, whichever proposal they belong to. Closing waits up to 20 seconds for GitLab to process the commit that takes proposals out; if GitLab is slower, the merge fails and the chair clicks **Close meeting** again. Meetings from forks aren't supported, since the site commits to the meeting's branch.
 - **Comments belong to one file:** comments on the English version of a decision don't show on the French page, and the other way round. Meeting discussion shows on every page.
 - **Margin comments:** a comment is attached to the paragraph's first line. A long thread pushes the next paragraph down rather than overlapping it. Comments on an accepted decision are placed by line as of the merge, so they can land on the wrong paragraph if the file was changed later without a proposal. Margin comments rely on GitLab marking source lines in its rendered Markdown; without that, file comments still work. Comments on renamed files haven't been tested.
 - **Images:** images in a proposal may not show until it's merged, because GitLab links them to the default branch.

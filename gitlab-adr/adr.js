@@ -36,7 +36,7 @@ const LABELS = {
     chair: 'Chair view', notFound: 'This file was not found.', meeting: 'Meeting',
     chairIntro: 'Votes on each proposal at open meetings. Accept or reject each one; then close the meeting to merge the accepted proposals.',
     missingTitle: 'Translation missing', missing: 'This file is not available in English yet. It is shown in French.',
-    others: 'At this meeting', supporting: 'Supporting files:', removed: 'removed', comment: 'Comment', onPara: ' on this paragraph',
+    others: 'At this meeting', removed: 'removed', comment: 'Comment', onPara: ' on this paragraph',
     fileComments: 'Comments on this file', meetingDiscussion: 'Meeting discussion', line: 'Line', earlier: 'On an earlier version, line',
     vote: 'Vote', notCounted: 'Not counted (not a voting member):', onlyMembers: 'Only voting members of the committee can vote.',
     noComments: 'No comments yet.', reply: 'Reply', replyAs: 'Reply as', commentAs: 'Comment as', yourReply: 'Your reply',
@@ -63,7 +63,7 @@ const LABELS = {
     all: 'Toutes les décisions', chair: 'Vue de la présidence', notFound: 'Ce fichier est introuvable.', meeting: 'Réunion',
     chairIntro: 'Votes sur chaque proposition des réunions ouvertes. Acceptez ou rejetez chacune, puis clôturez la réunion pour fusionner les propositions acceptées.',
     missingTitle: 'Traduction manquante', missing: "Ce fichier n'est pas encore disponible en français. Il est affiché en anglais.",
-    others: 'À cette réunion', supporting: "Fichiers d'appui :", removed: 'supprimé', comment: 'Commenter', onPara: ' ce paragraphe',
+    others: 'À cette réunion', removed: 'supprimé', comment: 'Commenter', onPara: ' ce paragraphe',
     fileComments: 'Commentaires sur ce fichier', meetingDiscussion: 'Discussion de la réunion', line: 'Ligne',
     earlier: 'Sur une version antérieure, ligne', vote: 'Vote', notCounted: 'Non comptés (pas membres votants) :',
     onlyMembers: 'Seuls les membres votants du comité peuvent voter.', noComments: 'Aucun commentaire pour le moment.', reply: 'Répondre',
@@ -333,7 +333,6 @@ const title = (a) => (a.text[lang] ?? a.text[other()] ?? a.text[''])?.match(/^#\
 const num = (a) => base(a.key).match(/^\d+/)?.[0];
 const label = (a) => (num(a) ? `${num(a)} · ${title(a)}` : title(a));
 const docLink = (a) => (removed(a) ? `${h(label(a))} (${L.removed})` : `<gcds-link href="${h(href(pathFor(a)))}">${h(label(a))}</gcds-link>`);
-const blobLink = (mr, path) => `<gcds-link href="${h(`${gitlab}/${c.project}/-/blob/${enc(mr.sourceBranch)}/${enc(path)}`)}" external>${h(base(path))}</gcds-link>`;
 const intro = () => `<gcds-heading tag="h1" margin-bottom="200">${h(site())}</gcds-heading>
   ${c.subtitle ? `<p class="adr-subtitle">${h(tr(c.subtitle))}</p>` : ''}<gcds-text>${L.intro}</gcds-text>`;
 const back = () => `<p><gcds-link href="#/">← ${L.all}</gcds-link></p>`;
@@ -343,10 +342,9 @@ const missingLangs = (a) => { // only for files named -en.md / -fr.md
   return langs.some(Boolean) ? ['en', 'fr'].filter((l) => !langs.includes(l)) : [];
 };
 
-// A meeting's proposals (current one in bold) and its supporting files, which link to GitLab.
+// A meeting's proposals, the current one in bold. Other files in the merge request (images and the like) aren't listed.
 const files = (mr, current) => `<ul class="adr-files">${proposalsOf(mr).map((a) => `<li>${a === current
-  ? `<strong aria-current="page">${h(label(a))}</strong>` : docLink(a)}</li>`).join('')}
-  ${(mr.diffStats || []).filter((x) => !isMd(x.path)).map((x) => `<li>${blobLink(mr, x.path)}</li>`).join('')}</ul>`;
+  ? `<strong aria-current="page">${h(label(a))}</strong>` : docLink(a)}</li>`).join('')}</ul>`;
 
 function listView() {
   const yourVote = (m, a) => {
@@ -358,10 +356,8 @@ function listView() {
     const m = details[mr.iid];
     const props = proposalsOf(mr).map((a) => `<li>${docLink(a)}${caption(`👍 ${votes(m, a, 'thumbsup').length} · 👎 ${votes(m, a, 'thumbsdown').length}${yourVote(m, a)}${
       decision(m, a) ? ` · <strong>${decLabel(decision(m, a))}</strong>` : ''}`)}</li>`);
-    const other = (mr.diffStats || []).filter((x) => !isMd(x.path));
     return `<gcds-heading tag="h3">${h(mr.title)}</gcds-heading>
-      ${props.length ? `<ul class="adr-list">${props.join('')}</ul>` : muted(L.none)}
-      ${other.length ? `<p>${caption(`${L.supporting} ${other.map((x) => blobLink(mr, x.path)).join(', ')}`)}</p>` : ''}`;
+      ${props.length ? `<ul class="adr-list">${props.join('')}</ul>` : muted(L.none)}`;
   };
   // Accepted decisions: -en.md / -fr.md files on the default branch (not a README), newest number first.
   const acc = Object.values(byKey).filter((a) => Object.keys(a.main).some(Boolean)).sort((a, b) => base(b.key).localeCompare(base(a.key)))
@@ -474,7 +470,7 @@ function docView() {
     <gcds-heading tag="h1">${h(label(a))}</gcds-heading>
     <gcds-text text-role="secondary">${!a.mr ? L.statusAccepted : dec ? `<strong>${dec === 'Accepted' ? L.willMerge : L.willGo}</strong>` : L.statusProposed}${mr
       ? ` · ${L.meeting} <gcds-link href="${h(mr.webUrl)}">${h(mr.title)}</gcds-link>` : ''}</gcds-text>
-    ${a.mr && (a.mr.diffStats || []).length > 1 ? `${caption(L.others)}${files(a.mr, a)}` : ''}
+    ${a.mr && proposalsOf(a.mr).length > 1 ? `${caption(L.others)}${files(a.mr, a)}` : ''}
     ${shown === other() ? `<gcds-notice type="warning" notice-title-tag="h2" notice-title="${L.missingTitle}"
       style="display: block; margin-bottom: var(--gcds-spacing-300)"><gcds-text>${L.missing}</gcds-text></gcds-notice>` : ''}
     <div class="adr-md${body.includes('adr-margin') ? ' adr-with-margin' : ''}" lang="${shown || lang}">${body}</div>
