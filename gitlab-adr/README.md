@@ -2,10 +2,10 @@
 
 A small website where a committee proposes, discusses, votes on and records Architecture Decision Records (ADRs). Everything is stored in one GitLab repository:
 
-- A **proposal** is a merge request whose title starts with a set prefix, such as `[RFC] Adopt PostgreSQL`. Every file it changes is part of it, usually one or more ADRs in English and French.
-- Committee members **vote** 👍 For or 👎 Against on the merge request, and **comment** on the whole proposal, on one file, or on one paragraph.
-- The **chair** accepts a proposal, which merges it, or rejects it, which closes it.
-- The default branch holds the **accepted** decisions.
+- A **meeting** is a merge request named after it, such as `2026-11-20 - Meeting`. Each ADR it adds or changes is a separate **proposal**, in English and French.
+- Committee members **vote** 👍 For or 👎 Against on each proposal. Anyone with access **comments** in the margin beside a paragraph, on a proposal as a whole, or on the meeting.
+- The **chair** accepts or rejects each proposal, then **closes the meeting**: proposals that weren't accepted are taken out of the merge request, and the rest is merged.
+- The default branch holds the **accepted** decisions. Who's on the committee is a list the chair keeps on the site, separate from who can open the repository.
 
 The site is a few static files: `index.html`, `adr.js` and the deploy-time settings in `config.json`. They read GitLab in the browser, so there's no backend or build step, and new proposals show up without redeploying. It uses [GC Design System](https://design-system.alpha.canada.ca/) components and is fully bilingual on one page: the header's English/Français link switches every label and the ADR text in place.
 
@@ -15,9 +15,9 @@ The site is a few static files: `index.html`, `adr.js` and the deploy-time setti
 
    | Role | Can |
    |---|---|
-   | Reporter | read, vote and comment (the committee) |
-   | Developer | also push proposal branches (authors) |
-   | Maintainer | also merge (the chair) |
+   | Reporter | read and comment; vote if on the [member list](#committee-members) |
+   | Developer | also push meeting branches (authors) |
+   | Maintainer | also record decisions, close meetings and edit the member list (the chair) |
 
 2. **Register an OAuth application** under **User or Group settings → Applications**:
    - Turn **Confidential** off.
@@ -32,7 +32,7 @@ The site is a few static files: `index.html`, `adr.js` and the deploy-time setti
      "project": "your-group/adr",
      "clientId": "YOUR_APPLICATION_ID",
      "folder": "adr",
-     "titlePrefix": "[RFC]",
+     "titlePattern": "^\\d{4}-\\d{2}-\\d{2} - Meeting",
      "title": { "en": "StatCan Developer Program", "fr": "Programme des développeurs de StatCan" },
      "subtitle": { "en": "TIGER (technology, integration, governance, engineering review)", "fr": "TIGER (technologie, intégration, gouvernance, examen de l’ingénierie)" },
      "signature": {
@@ -48,7 +48,7 @@ The site is a few static files: `index.html`, `adr.js` and the deploy-time setti
    | `project` | The ADR project's full path. Required. |
    | `clientId` | The application ID from step 2. Required. |
    | `folder` | The folder on the default branch that holds accepted ADRs, subfolders included, for example `adr` or `tiger`. |
-   | `titlePrefix` | Merge requests whose title starts with this are proposals, for example `[RFC]`. Empty: every open merge request is one. |
+   | `titlePattern` | A regular expression for meeting merge request titles. The example matches `2026-11-20 - Meeting`; in JSON each backslash is doubled. Empty: every open merge request is a meeting. |
    | `title`, `subtitle` | The home page heading and the line under it. Each is one string, or an `en` and `fr` pair. |
    | `signature` | The department signature in the header, per language: image file, alt text and link. Leave it out to show the Government of Canada signature. |
 
@@ -93,7 +93,13 @@ Ce que nous ferons.
 Ce qui devient plus facile ou plus difficile.
 ```
 
-To propose one, create a branch, add both files, and open a merge request into the default branch whose title starts with the prefix in `config.json`, for example `[RFC] Adopt PostgreSQL`. GitLab's Web IDE does all three. One merge request can hold several decisions and supporting files, such as images; they're voted on together. Markdown files are shown on the site, and other files link to GitLab. To change an accepted decision, open a merge request that edits its files. Markdown files without a language suffix are shown as they are, in both languages.
+To put proposals on a meeting's agenda, add their files to that meeting's branch. Someone opens one merge request per meeting into the default branch, named to match `titlePattern`, for example `2026-11-20 - Meeting`; GitLab's Web IDE can create the branch, files and merge request. Each ADR in it is a separate proposal with its own vote, comments and decision. Supporting files, such as images, link to GitLab and are merged with the meeting. To change an accepted decision, add an edit of its files to a meeting. Markdown files without a language suffix are shown as they are, in both languages.
+
+## Committee members
+
+Committee membership isn't the same as access to the GitLab project: authors, observers and administrators can open it too. The member list is `members.json` in the ADR folder, and only votes from people on it count.
+
+The chair keeps it on the site's **Members** page: type part of a name or username to find people, tick the members, and save. The page lists everyone with Reporter access or higher, so nobody types usernames, and saving commits the file to the default branch, so GitLab keeps the history. To add someone without access, give them Reporter access in GitLab first. Until a list is saved, everyone with Reporter access or higher counts as a member.
 
 ## Terms of reference
 
@@ -103,28 +109,32 @@ The committee's terms of reference are ADR 0000, `0000-terms-of-reference-en.md`
 
 ## Using the site
 
-- **Home (`#/`):** the title and subtitle from `config.json`, links to the terms of reference and the chair view, then proposals (each with its files, votes and your own vote), then accepted decisions (the `-en.md` and `-fr.md` files in the ADR folder) with the date and final tally.
-- **A file (its path, for example `#/adr/0007-adopt-postgres-en.md`):**
+- **Home (`#/`):** the title and subtitle from `config.json`; links to the terms of reference, the member list and the chair view; each open meeting with its proposals, their votes, your vote and any decision; then accepted decisions (the `-en.md` and `-fr.md` files in the ADR folder) with the date they were accepted.
+- **A proposal (its file's path, for example `#/adr/0007-adopt-postgres-en.md`):**
   - The file, rendered by GitLab. The address names the language: switching language moves to the `-fr.md` file without reloading, and a link to a `-fr.md` file opens in French. If one language's file is missing, a notice says so and the other language is shown.
-  - For a proposal: the other files in it, the vote buttons, and three places to comment. Each member gets one vote for the whole merge request, so voting For removes an Against and the other way round. Hovering over a vote shows who voted.
-    - **On a paragraph:** each paragraph has a **Comment on this paragraph** button (in the right margin on wide screens, shown on hover). Threads appear under their paragraph.
-    - **On this file:** threads about the file as a whole, plus line comments that can't be placed under a paragraph, such as those on a line that has since changed.
-    - **On the whole proposal:** the merge request's general discussion.
-  - For an accepted decision: the votes and comments from the merge request that accepted it, read-only.
-- **Chair view (`#/chair`):** every open proposal with For and Against (with names), who hasn't voted yet (project members with Reporter access or higher), missing translations, and GitLab's merge status. People with merge rights get two buttons:
-  - **Accept** merges the merge request, then posts the tally as a comment in GitLab. It's available once both language files exist and GitLab says the merge request can be merged. The merge is tied to the commit people voted on, so GitLab refuses it if new commits were pushed since.
-  - **Reject** closes the merge request, then posts the tally.
+  - The other proposals and files at the same meeting.
+  - **Margin comments:** on wide screens each paragraph has a margin beside it, as in a word processor, with its comment threads as cards and a **Comment** button that appears on hover or keyboard focus. Commented paragraphs are highlighted. On narrow screens the margin sits below the paragraph.
+  - **Vote:** 👍 For and 👎 Against. Each member gets one vote per proposal, so voting For removes an Against and the other way round. Hovering over a vote shows who voted. Reactions from people not on the member list are shown as not counted. Voting stops once the chair records a decision.
+  - **Comments on this file:** threads about the proposal as a whole, plus margin comments that can't be placed beside a paragraph, such as those on a line that has since changed.
+  - **Meeting discussion:** the merge request's general discussion.
+  - For an accepted decision: the votes and comments from the meeting that accepted it, read-only.
+- **Members (`#/members`):** the committee, and for the chair the editor described in [Committee members](#committee-members).
+- **Chair view (`#/chair`):** for each open meeting, every proposal with For and Against (members' names), who hasn't voted yet, missing translations and the decision so far, plus GitLab's merge status. People with Maintainer access get:
+  - **Accept** and **Reject** on each proposal. Each posts the tally as a reply on the proposal's ballot comment, so GitLab keeps the record; the latest decision counts, so a mistake can be corrected. Accept needs both language files.
+  - **Close meeting.** Proposals that weren't accepted are taken out of the merge request in one commit: new files are deleted and changed ones are put back as they are on the default branch. Then the merge request is merged, with a summary comment. If nothing was accepted, the merge request is closed instead. The site refuses to close a meeting if new commits arrived after the page loaded, so nothing unreviewed is merged.
 - **Comments made at a meeting:** when the chair comments anywhere, an **On behalf of** list lets them record what a member said. The comment is posted under the chair's account and starts with *On behalf of / Au nom de* and the member's name, written as plain text so no notification is sent.
 
-Votes are GitLab reactions, and comments are GitLab comments: paragraph comments are line comments on the merge request's changes, and file comments are GitLab file comments. So everything also shows in GitLab, and none of it is anonymous. The tally comments keep the decision record in GitLab even without this site.
+Votes are GitLab reactions on a **ballot comment** that the site adds to each proposal's file the first time someone votes. Members can also vote by reacting 👍 or 👎 to that comment in GitLab. Comments are GitLab comments: margin comments are line comments on the merge request's changes, and file comments are GitLab file comments. So everything also shows in GitLab, and none of it is anonymous.
 
 ## Limits
 
 - **Sign-in:** the site asks for sign-in before showing anything, because gitlab.com only renders Markdown for signed-in users. The token uses the broad `api` scope, GitLab's only scope that allows writing. It's kept in `sessionStorage` for that browser tab and expires after 2 hours.
 - **Sizes:** the site reads the first 100 open and 100 merged merge requests, ADR files, file changes in a merge request, members, threads and votes.
-- **Competing proposals:** if two open merge requests change the same file, the site shows the first one.
-- **Comments belong to one file:** comments on the English version of a decision don't show on the French page, and the other way round. Comments on the whole proposal show on every page.
-- **Paragraph comments:** a comment is attached to the paragraph's first line. Comments on an accepted decision are placed by line as of the merge, so they can land on the wrong paragraph if the file was changed later without a proposal. Paragraph buttons rely on GitLab marking source lines in its rendered Markdown; without that, file comments still work. Comments on renamed files haven't been tested.
+- **Competing proposals:** if two open meetings change the same file, the site shows the first one.
+- **Ballots:** if two people cast the very first vote on a proposal at the same moment, GitLab can end up with two ballot comments; the site counts the first one. Decisions count only from people with Maintainer access.
+- **Closing a meeting:** supporting files (anything that isn't Markdown) are merged with the meeting, whichever proposal they belong to. Closing waits up to 20 seconds for GitLab to process the commit that takes proposals out; if GitLab is slower, the merge fails and the chair clicks **Close meeting** again. Meetings from forks aren't supported, since the site commits to the meeting's branch.
+- **Comments belong to one file:** comments on the English version of a decision don't show on the French page, and the other way round. Meeting discussion shows on every page.
+- **Margin comments:** a comment is attached to the paragraph's first line. A long thread pushes the next paragraph down rather than overlapping it. Comments on an accepted decision are placed by line as of the merge, so they can land on the wrong paragraph if the file was changed later without a proposal. Margin comments rely on GitLab marking source lines in its rendered Markdown; without that, file comments still work. Comments on renamed files haven't been tested.
 - **Images:** images in a proposal may not show until it's merged, because GitLab links them to the default branch.
 - **Translation review:** the French interface text, the French title and subtitle in `config.json`, and the French terms of reference template use Canadian typography. Have a fluent speaker review them.
 - **Footer:** the footer shows only the Canada wordmark, which the Federal Identity Program requires on Government of Canada sites. It has no links or text.

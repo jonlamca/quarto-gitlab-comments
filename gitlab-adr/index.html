@@ -38,14 +38,31 @@
     .adr-votes { display: flex; flex-wrap: wrap; gap: var(--gcds-spacing-100); margin-bottom: var(--gcds-spacing-400); }
     .adr-form { margin-top: var(--gcds-spacing-300); }
     .adr-files { font: var(--gcds-font-text-small); margin: 0 0 var(--gcds-spacing-300); padding-left: var(--gcds-spacing-400); }
-    /* Paragraph comments: threads indent under their paragraph. The button sits below it, or in the right margin,
-       shown on hover or keyboard focus, on wide screens with a mouse. */
-    .adr-block { position: relative; }
-    .adr-block > .adr-thread { margin-left: var(--gcds-spacing-400); }
-    .adr-block > :is(.adr-c, .adr-form) { display: block; margin: 0 0 var(--gcds-spacing-300); }
-    @media (hover: hover) and (min-width: 80em) {
-      .adr-block > .adr-c { position: absolute; top: 0; left: 100%; width: max-content; margin: 0 0 0 var(--gcds-spacing-300); opacity: 0; }
-      .adr-block:is(:hover, :focus-within) > .adr-c { opacity: 1; }
+    .adr-people { list-style: none; padding: 0; margin: var(--gcds-spacing-200) 0 var(--gcds-spacing-400); }
+    .adr-people li { padding: var(--gcds-spacing-100) 0; border-top: var(--gcds-border-width-sm) solid var(--gcds-color-grayscale-100); }
+    .adr-people input { width: 1.25em; height: 1.25em; margin-right: var(--gcds-spacing-150); vertical-align: middle; accent-color: var(--gcds-link-default); }
+    .adr-handle { color: var(--gcds-text-secondary); font: var(--gcds-font-text-small); }
+    /* Margin comments, like a word processor's: on wide screens each paragraph has a margin column beside it holding its
+       threads as cards and a Comment button (shown on hover or keyboard focus with a mouse). Commented paragraphs are
+       highlighted. On narrow screens the margin drops below the paragraph. */
+    .adr-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .adr-has > :first-child { background: var(--gcds-bg-light); box-shadow: 0 0 0 var(--gcds-spacing-50) var(--gcds-bg-light); }
+    .adr-margin { font: var(--gcds-font-text-small); margin: 0 0 var(--gcds-spacing-300) var(--gcds-spacing-400); }
+    .adr-margin > .adr-thread { border: var(--gcds-border-width-sm) solid var(--gcds-border-default); border-radius: var(--gcds-spacing-100);
+      padding: var(--gcds-spacing-150); margin-bottom: var(--gcds-spacing-150); background: var(--gcds-bg-white); }
+    .adr-margin > :is(.adr-c, .adr-form) { display: block; }
+    .adr-reply { margin-left: var(--gcds-spacing-400); padding-left: var(--gcds-spacing-300); border-left: var(--gcds-border-width-lg) solid var(--gcds-color-grayscale-100); }
+    .adr-act { margin-left: var(--gcds-spacing-400); }
+    .adr-margin :is(.adr-reply, .adr-act) { margin-left: 0; }
+    .adr-margin .adr-reply { padding-left: var(--gcds-spacing-150); }
+    @media (min-width: 64em) {
+      .adr-md.adr-with-margin { max-width: none; }
+      .adr-with-margin > :not(.adr-block) { max-width: var(--gcds-text-character-limit); }
+      .adr-block { display: grid; grid-template-columns: minmax(0, var(--gcds-text-character-limit)) 18rem; column-gap: var(--gcds-spacing-500); align-items: start; }
+      .adr-margin { margin: 0; height: 0; } /* cards hang beside the paragraph; stack() in adr.js keeps them from overlapping */
+    }
+    @media (min-width: 64em) and (hover: hover) {
+      .adr-block:not(:hover, :focus-within) .adr-margin > .adr-c { opacity: 0; }
     }
     .adr-subtitle { font: var(--gcds-font-h3); color: var(--gcds-text-secondary); margin: 0 0 var(--gcds-spacing-300); }
     /* Department signature from config.json, in the header's signature slot; sized like the GC signature. */
