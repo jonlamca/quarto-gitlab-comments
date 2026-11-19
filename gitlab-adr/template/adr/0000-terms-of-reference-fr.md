@@ -34,7 +34,8 @@ Une proposition ne peut pas être acceptée tant que les deux versions linguisti
 - À la fin de la période de vote, si le quorum est atteint, la présidence accepte ou rejette chaque proposition, selon la règle de décision. Le site des décisions consigne le décompte final sur le commentaire de vote de la proposition; GitLab en conserve ainsi la trace.
 - Un décompte consigné demeure valable même si la liste des membres change par la suite.
 - La présidence clôture ensuite la réunion. Les propositions acceptées sont fusionnées dans la branche par défaut. Les propositions rejetées, et celles qui n'ont pas été tranchées, sont retirées de la demande de fusion; un auteur peut inscrire une proposition reportée à l'ordre du jour d'une réunion ultérieure.
-- Si de nouveaux commits sont ajoutés après le début du vote, la présidence [par exemple, demande aux membres de confirmer leur vote] avant de trancher.
+- Les votes portent sur la version de la proposition pour laquelle ils ont été exprimés. Si une proposition change après le début du vote, les votes sur la version antérieure ne comptent plus et les membres votent de nouveau sur la nouvelle version.
+- Les propositions sont figées [par exemple, deux jours ouvrables avant la réunion]; les modifications ultérieures sont reportées à la réunion suivante.
 - Une décision acceptée est remplacée ou retirée par une nouvelle proposition qui la modifie ou la remplace.
 
 ## Révision du présent cadre

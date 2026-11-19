@@ -20,8 +20,13 @@ const marginComments = c.marginComments !== false; // false: no margins beside p
 const slidesOn = c.slides !== false; // false: no "Present as slides" button
 const META = ['status', 'date', 'decision-makers', 'consulted', 'informed']; // MADR front matter fields, shown in this order
 const BALLOT = '**Vote / Vote**'; // first line of the ballot comment on each proposal
-const BALLOT_BODY = `${BALLOT}\n\nCommittee members: react 👍 For or 👎 Against on this comment. Only votes from people on the member list count.\n\n`
-  + 'Membres du comité : réagissez à ce commentaire avec 👍 Pour ou 👎 Contre. Seuls les votes des personnes inscrites sur la liste des membres comptent.';
+// Each ballot is for one version of the proposal (marked in an HTML comment, which GitLab doesn't show). When the proposal
+// changes, the next vote starts a new ballot, and votes on the earlier one stop counting.
+const ballotBody = (v) => `${BALLOT}\n\nCommittee members: react 👍 For or 👎 Against on this comment to vote on this version of the proposal. `
+  + 'If the proposal changes, a new ballot replaces this one. Only votes from voting members count.\n\n'
+  + 'Membres du comité : réagissez à ce commentaire avec 👍 Pour ou 👎 Contre pour voter sur cette version de la proposition. '
+  + `Si la proposition change, un nouveau scrutin remplace celui-ci. Seuls les votes des membres votants comptent.\n\n<!-- version ${v} -->`;
+const REPLACED = '**Replaced / Remplacé** — The proposal changed; vote on the new ballot. / La proposition a changé; votez sur le nouveau scrutin.';
 const redirectUri = location.origin + location.pathname; // register this exact URL on the GitLab application
 const s = sessionStorage;
 
@@ -41,6 +46,10 @@ const LABELS = {
     others: 'At this meeting', removed: 'removed', comment: 'Comment', onPara: ' on this paragraph',
     fileComments: 'Comments on this file', meetingDiscussion: 'Meeting discussion', line: 'Line', earlier: 'On an earlier version, line',
     vote: 'Vote', notCounted: 'Not counted (not a voting member):', onlyMembers: 'Only voting members of the committee can vote.',
+    changedTitle: 'This proposal changed after you voted', seeChanges: 'See the changes in GitLab',
+    changedYou: (v) => `You voted ${v === 'thumbsup' ? 'For' : 'Against'} on an earlier version, so your vote no longer counts.`,
+    voteAgain: (v) => `Vote ${v === 'thumbsup' ? 'For' : 'Against'} again`,
+    changedNote: 'This proposal changed after voting started. Votes on earlier versions don’t count.', staleVoters: 'Voted on an earlier version:',
     noComments: 'No comments yet.', reply: 'Reply', replyAs: 'Reply as', commentAs: 'Comment as', yourReply: 'Your reply',
     yourComment: 'Your comment', onBehalf: 'On behalf of', myself: 'Myself', onBehalfHint: 'Chair only: record a comment a member made at a meeting.',
     proposal: 'Proposal', notVoted: 'Not yet voted', translations: 'Missing translation', mergeStatus: 'Merge status:',
@@ -70,7 +79,11 @@ const LABELS = {
     others: 'À cette réunion', removed: 'supprimé', comment: 'Commenter', onPara: ' ce paragraphe',
     fileComments: 'Commentaires sur ce fichier', meetingDiscussion: 'Discussion de la réunion', line: 'Ligne',
     earlier: 'Sur une version antérieure, ligne', vote: 'Vote', notCounted: 'Non comptés (pas membres votants) :',
-    onlyMembers: 'Seuls les membres votants du comité peuvent voter.', noComments: 'Aucun commentaire pour le moment.', reply: 'Répondre',
+    onlyMembers: 'Seuls les membres votants du comité peuvent voter.',
+    changedTitle: 'Cette proposition a changé après votre vote', seeChanges: 'Voir les modifications dans GitLab',
+    changedYou: (v) => `Vous avez voté ${v === 'thumbsup' ? 'Pour' : 'Contre'} sur une version antérieure; votre vote ne compte plus.`,
+    voteAgain: (v) => `Voter ${v === 'thumbsup' ? 'Pour' : 'Contre'} de nouveau`,
+    changedNote: 'Cette proposition a changé après le début du vote. Les votes sur des versions antérieures ne comptent pas.', staleVoters: 'Ont voté sur une version antérieure :', noComments: 'Aucun commentaire pour le moment.', reply: 'Répondre',
     replyAs: 'Répondre en tant que', commentAs: 'Commenter en tant que', yourReply: 'Votre réponse', yourComment: 'Votre commentaire',
     onBehalf: 'Au nom de', myself: 'Moi-même', onBehalfHint: "Présidence seulement : consigner un commentaire fait par un membre lors d'une réunion.",
     proposal: 'Proposition', notVoted: "N'ont pas encore voté", translations: 'Traduction manquante', mergeStatus: 'État de la fusion\u00a0:',
@@ -139,7 +152,7 @@ const LIST = `query($p: ID!, $f: String!, $r: String) { currentUser { username n
     open: mergeRequests(state: opened, first: 100) { nodes { ${MR} } }
     merged: mergeRequests(state: merged, sort: MERGED_AT_DESC, first: 100) { nodes { iid title targetBranch mergedAt diffStats { path } } } } }`;
 const BLOBS = `query($p: ID!, $r: String!, $paths: [String!]!) { project(fullPath: $p) { repository {
-  blobs(ref: $r, paths: $paths, first: 100) { nodes { path rawTextBlob } } } } }`;
+  blobs(ref: $r, paths: $paths, first: 100) { nodes { path rawTextBlob oid } } } } }`;
 const DETAIL = `query($p: ID!, $iid: String!) { project(fullPath: $p) { mergeRequest(iid: $iid) { ${MR} diffRefs { baseSha headSha startSha }
   discussions(first: 100) { nodes { replyId notes { nodes { id body bodyHtml system createdAt author { name username }
     awardEmoji { nodes { name user { name username } } } position { positionType newPath oldPath newLine oldLine diffRefs { headSha } } } } } } } } }`;
@@ -164,8 +177,9 @@ async function gql(query, variables) {
   if (err) throw new Error(err);
   return data;
 }
+const oids = {}; // `${ref}:${path}` -> GitLab's id for that file's content, which changes with every edit
 const blobsAt = (r, paths) => (paths.length ? gql(BLOBS, { p: c.project, r, paths })
-  .then((x) => Object.fromEntries(x.project.repository.blobs.nodes.map((b) => [b.path, b.rawTextBlob]))) : {});
+  .then((x) => Object.fromEntries(x.project.repository.blobs.nodes.map((b) => { oids[`${r}:${b.path}`] = b.oid; return [b.path, b.rawTextBlob]; }))) : {});
 const detail = async (iid) => (await gql(DETAIL, { p: c.project, iid })).project.mergeRequest;
 const headOf = async (iid) => (await gql(HEAD, { p: c.project, iid })).project.mergeRequest.diffHeadSha;
 
@@ -298,7 +312,15 @@ const proposalsOf = (mr) => { // in the merge request's file order, one entry pe
 // what the site shows, so later changes to the member list don't rewrite past decisions.
 const ballotPath = (a) => a.prop.en ?? a.prop.fr ?? a.prop[''] ?? a.main.en ?? a.main.fr ?? a.main[''];
 const isBallot = (t) => t.notes.nodes[0]?.body?.startsWith(BALLOT);
-const ballot = (mr, a) => mr?.discussions.nodes.find((t) => isBallot(t) && t.notes.nodes[0].position?.newPath === ballotPath(a)); // first, if two were started at once
+// A proposal's version: the ids of its files' current content on the meeting branch, so an edit to either language changes it.
+const version = (a) => Object.keys(a.prop).sort().map((l) => `${l || 'md'}:${oids[`${a.mr.sourceBranch}:${a.prop[l]}`]?.slice(0, 12) ?? 'gone'}`).join(',');
+const versionOf = (t) => t.notes.nodes[0].body.match(/<!-- version (\S+) -->/)?.[1];
+const ballots = (mr, a) => (mr?.discussions.nodes || []).filter((t) => isBallot(t) && t.notes.nodes[0].position?.newPath === ballotPath(a));
+const hasDecision = (t) => t.notes.nodes.some((x) => /^\*\*(Accepted|Rejected) \//.test(x.body));
+// The ballot that counts: for a proposal, the first one for its current version (first, if two were started at once); for an
+// accepted decision, the last one decided in the meeting that accepted it.
+const ballot = (mr, a) => (a.mr ? ballots(mr, a).find((t) => versionOf(t) === version(a)) : ballots(mr, a).findLast(hasDecision) ?? ballots(mr, a).at(-1));
+const earlier = (mr, a) => (a.mr ? ballots(mr, a).filter((t) => versionOf(t) !== version(a)).at(-1) : undefined); // the latest earlier version
 const reactors = (x, n) => (x?.awardEmoji.nodes || []).filter((r) => r.name === n && r.user).map((r) => r.user);
 const memberOf = (u) => members.find((m) => m.username === u.username);
 const isVoter = (u) => !!memberOf(u)?.voting;
@@ -508,6 +530,9 @@ function docView() {
   const unplaced = onFile.filter((t) => !placed.has(t)); // file comments, and margin comments whose line is gone
   const dec = a.mr && decision(mr, a);
   const off = mr ? uncounted(mr, a) : [];
+  const prev = open && !dec ? earlier(mr, a) : null; // votes cast on an earlier version of this proposal
+  const old = prev && ['thumbsup', 'thumbsdown'].find((n) => mine(prev.notes.nodes[0], n));
+  const redo = old && isVoter(me) && !['thumbsup', 'thumbsdown'].some((n) => mine(ballot(mr, a)?.notes.nodes[0], n));
   return `${back()}
     <gcds-heading tag="h1">${h(label(a))}</gcds-heading>
     <gcds-text text-role="secondary">${statusLine(a, mr)}</gcds-text>
@@ -517,7 +542,12 @@ function docView() {
     ${shown === other() ? `<gcds-notice type="warning" notice-title-tag="h2" notice-title="${L.missingTitle}"
       style="display: block; margin-bottom: var(--gcds-spacing-300)"><gcds-text>${L.missing}</gcds-text></gcds-notice>` : ''}
     <div class="adr-md${body.includes('adr-margin') ? ' adr-with-margin' : ''}" lang="${shown || lang}">${body}</div>
-    ${mr ? `<gcds-heading tag="h2">${L.vote}</gcds-heading><div class="adr-votes" id="adr-votes">${voteBar(mr, a)}</div>
+    ${mr ? `<gcds-heading tag="h2">${L.vote}</gcds-heading>
+      ${redo ? `<div id="adr-revote"><gcds-notice type="warning" notice-title-tag="h3" notice-title="${L.changedTitle}" style="display: block; margin-bottom: var(--gcds-spacing-300)">
+        <gcds-text>${L.changedYou(old)} <gcds-link href="${h(mr.webUrl)}/diffs" external>${L.seeChanges}</gcds-link></gcds-text>
+        <gcds-button size="small" data-vote="${old}">${L.voteAgain(old)}</gcds-button></gcds-notice></div>`
+        : prev && reactors(prev.notes.nodes[0], 'thumbsup').concat(reactors(prev.notes.nodes[0], 'thumbsdown')).length ? `<p>${caption(L.changedNote)}</p>` : ''}
+      <div class="adr-votes" id="adr-votes">${voteBar(mr, a)}</div>
       ${off.length ? `<p>${caption(`${L.notCounted} ${h(list(off))}`)}</p>` : ''}
       ${open && !isVoter(me) && !dec ? `<p>${caption(L.onlyMembers)}</p>` : ''}
       ${fileComments || unplaced.length ? `<gcds-heading tag="h2">${L.fileComments}</gcds-heading>${show(unplaced) || muted(L.noComments)}${
@@ -535,10 +565,12 @@ function chairView() {
       const voted = new Set([...yes, ...no].map((u) => u.username));
       const missing = missingLangs(a);
       const off = uncounted(m, a);
+      const prev = !decision(m, a) && earlier(m, a);
+      const stale = prev ? ['thumbsup', 'thumbsdown'].flatMap((n) => reactors(prev.notes.nodes[0], n)).filter((u) => isVoter(u) && !voted.has(u.username)) : [];
       const btn = (v, text, role) => `<gcds-button size="small" button-role="${role}" data-decide="${v}" data-iid="${h(mr.iid)}" data-key="${h(a.key)}"
         ${v === 'Accepted' && missing.length ? `disabled title="${L.needsBoth}"` : ''}>${text}</gcds-button>`;
       return `<tr><th scope="row">${docLink(a)}</th><td>${cell(yes)}</td><td>${cell(no)}</td>
-        <td>${decision(m, a) ? '—' : h(named(members.filter((u) => u.voting && !voted.has(u.username)))) || '—'}${off.length ? `<br>${L.notCounted} ${h(list(off))}` : ''}</td>
+        <td>${decision(m, a) ? '—' : h(named(members.filter((u) => u.voting && !voted.has(u.username)))) || '—'}${stale.length ? `<br>${L.staleVoters} ${h(named(stale))}` : ''}${off.length ? `<br>${L.notCounted} ${h(list(off))}` : ''}</td>
         <td>${missing.map((l) => l.toUpperCase()).join(', ') || '—'}</td>
         <td>${decLabel(decision(m, a)) || '—'}</td>
         <td>${mr.userPermissions.canMerge ? `${btn('Accepted', L.accept, 'primary')} ${btn('Rejected', L.reject, 'secondary')}` : '—'}</td></tr>`;
@@ -634,10 +666,13 @@ async function discuss(mr, path, body, line = null) {
   await api('POST', `${mrApi(mr.iid)}/discussions`, { body, position });
 }
 
-// The proposal's ballot thread, started on first use.
+// The ballot for the proposal's current version, started on first use. An earlier version's ballot gets a reply pointing to
+// the new one, for anyone voting in GitLab.
 async function ballotFor(iid, a) {
   if (!ballot(details[iid], a)) {
-    await discuss(details[iid], ballotPath(a), BALLOT_BODY);
+    const prev = earlier(details[iid], a);
+    await discuss(details[iid], ballotPath(a), ballotBody(version(a)));
+    if (prev) await gql(NOTE, { id: details[iid].id, b: REPLACED, d: prev.replyId });
     details[iid] = await detail(iid);
     if (doc?.mr?.iid === iid) doc.mr = details[iid];
   }
@@ -791,6 +826,7 @@ el.addEventListener('click', async (e) => {
       if (!mine(v, n) && mine(v, x)) await toggle(v, x);
       await toggle(v, n);
       document.getElementById('adr-votes').innerHTML = voteBar(doc.mr, doc.a); // just the bar: typed comments survive
+      document.getElementById('adr-revote')?.remove();
       const nb = el.querySelector(`[data-vote="${n}"]`);
       await nb.componentOnReady?.();
       return nb.focus();

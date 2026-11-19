@@ -94,6 +94,13 @@
     'main:adr/img/logo.png': '',
     'meeting-2026-11-20:adr/members.json': JSON.stringify({ members: [{ username: 'bob', name: 'Bob Guest', voting: true }] }),
   };
+  // GitLab's id for a file's content (here a short hash): it changes with every edit, which is how the site tells versions apart.
+  const oid = (t) => { let x = 2166136261; for (const ch of t) x = Math.imul(x ^ ch.charCodeAt(0), 16777619) >>> 0; return x.toString(16).padStart(8, '0').repeat(5); };
+  // The sample ballots are for the proposals' current versions.
+  const version = (branch, key) => ['en', 'fr'].filter((l) => files[`${branch}:${key}-${l}.md`] != null).map((l) => `${l}:${oid(files[`${branch}:${key}-${l}.md`]).slice(0, 12)}`).join(',');
+  for (const [id, key] of [['b3', 'adr/0003-adopt-postgres'], ['b5', 'adr/0005-pg-backups']]) {
+    mrs[7].discussions.nodes.find((d) => d.replyId.endsWith(`/${id}`)).notes.nodes[0].body += `\n\n<!-- version ${version('meeting-2026-11-20', key)} -->`;
+  }
   const people = [[alex, 40], [priya, 30], [marco, 30], [dana, 20], [sam, 30], [lee, 20], [bob, 10]];
   const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
   const notes = () => Object.values(mrs).flatMap((m) => m.discussions.nodes.flatMap((d) => d.notes.nodes));
@@ -165,7 +172,7 @@
         open: { nodes: Object.values(mrs).filter((m) => m.state === 'opened') },
         merged: { nodes: merged.sort((a, b) => b.mergedAt.localeCompare(a.mergedAt)) } } } });
     }
-    if (query.includes('blobs(')) return json({ data: { project: { repository: { blobs: { nodes: v.paths.filter((p) => files[`${v.r}:${p}`] != null).map((p) => ({ path: p, rawTextBlob: files[`${v.r}:${p}`] })) } } } } });
+    if (query.includes('blobs(')) return json({ data: { project: { repository: { blobs: { nodes: v.paths.filter((p) => files[`${v.r}:${p}`] != null).map((p) => ({ path: p, rawTextBlob: files[`${v.r}:${p}`], oid: oid(files[`${v.r}:${p}`]) })) } } } } });
     if (query.includes('{ diffHeadSha } } }')) return json({ data: { project: { mergeRequest: { diffHeadSha: mrs[v.iid].diffHeadSha } } } });
     if (query.includes('mergeRequest(iid')) return json({ data: { project: { mergeRequest: structuredClone(mrs[v.iid]) } } });
     return json({ errors: [{ message: `mock: unhandled ${query.slice(0, 60)}` }] });

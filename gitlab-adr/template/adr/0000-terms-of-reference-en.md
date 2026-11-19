@@ -34,7 +34,8 @@ A proposal can't be accepted until both language versions are present.
 - When the voting period ends and quorum is met, the chair accepts or rejects each proposal, following the decision rule. The decision site records the final tally on the proposal's ballot comment, so GitLab keeps the record.
 - A recorded tally stands even if the member list changes later.
 - The chair then closes the meeting. Accepted proposals are merged into the default branch. Rejected proposals, and any not decided, are taken out of the merge request; an author can put a deferred proposal on a later meeting's agenda.
-- If new commits are pushed after people have voted, the chair [for example, asks members to confirm their vote] before deciding.
+- Votes belong to the version of the proposal they were cast on. If a proposal changes after voting starts, votes on the earlier version stop counting and members vote again on the new version.
+- Proposals are frozen [for example, two business days before the meeting]; later changes go to the next meeting.
 - An accepted decision is replaced or withdrawn by a new proposal that edits or supersedes it.
 
 ## Review of these terms
