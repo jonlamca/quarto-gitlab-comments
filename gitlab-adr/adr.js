@@ -601,6 +601,31 @@ async function ballotFor(iid, a) {
   return ballot(details[iid], a);
 }
 
+// Save the Members page: work out what changed on the page since it loaded, re-read members.json from the main branch, and
+// apply just those changes to it. So anything someone else saved in the meantime is kept, and the commit message says
+// who was added, changed or removed.
+// ponytail: two saves within the same moment can still overwrite each other; add CommitAction.lastCommitId if that bites.
+async function saveMembers() {
+  const loaded = new Map((hasList ? members : []).map((u) => [u.username, u]));
+  const edits = new Map(); // username -> the person as set on the page, or null to remove them
+  for (const li of el.querySelectorAll('.adr-people li')) {
+    const box = li.querySelector('input[type=checkbox]');
+    const u = { username: box.value, name: box.dataset.name, voting: li.querySelector('.adr-voting').value === 'yes', group: li.querySelector('.adr-group').value.trim() };
+    const was = loaded.get(u.username);
+    if (!box.checked) { if (was) edits.set(u.username, null); }
+    else if (!was || was.voting !== u.voting || was.group !== u.group) edits.set(u.username, u);
+  }
+  if (!edits.size) return;
+  const raw = (await blobsAt(rootRef, [MEMBERS_FILE]))[MEMBERS_FILE];
+  let now = [];
+  try { now = JSON.parse(raw).members.filter((u) => u.username); } catch { /* no list yet */ }
+  const had = new Set(now.map((u) => u.username));
+  const next = [...now.filter((u) => !edits.has(u.username)), ...[...edits.values()].filter(Boolean)].sort((x, y) => x.name.localeCompare(y.name));
+  const said = [...edits].map(([who, u]) => `${!u ? 'remove' : had.has(who) ? 'change' : 'add'} @${who}`).join('; ');
+  await gql(COMMIT, { p: c.project, b: rootRef, m: `Update committee members: ${said}`, a: [{ action: raw == null ? 'CREATE' : 'UPDATE',
+    filePath: MEMBERS_FILE, content: `${JSON.stringify({ members: next }, null, 2)}\n` }] });
+}
+
 // Close a meeting: take the proposals that weren't accepted out of the branch (new files deleted, changed ones put back as
 // they are on the default branch), then merge the rest. Nothing accepted: the merge request is closed instead.
 async function closeMeeting(iid) {
@@ -684,12 +709,7 @@ el.addEventListener('click', async (e) => {
       return;
     }
     if (b.dataset.action === 'save-members') {
-      const picked = [...el.querySelectorAll('.adr-people input:checked')].map((i) => {
-        const li = i.closest('li');
-        return { username: i.value, name: i.dataset.name, voting: li.querySelector('.adr-voting').value === 'yes', group: li.querySelector('.adr-group').value.trim() };
-      });
-      await gql(COMMIT, { p: c.project, b: rootRef, m: 'Update committee members', a: [{ action: hasList ? 'UPDATE' : 'CREATE',
-        filePath: MEMBERS_FILE, content: `${JSON.stringify({ members: picked }, null, 2)}\n` }] });
+      await saveMembers();
       return go();
     }
   } catch (err) {
