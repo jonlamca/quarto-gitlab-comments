@@ -99,7 +99,9 @@ To put proposals on a meeting's agenda, add their files to that meeting's branch
 
 Committee membership isn't the same as access to the GitLab project: authors, observers and administrators can open it too. The member list is `members.json` in the ADR folder, and only votes from people on it count.
 
-The chair keeps it on the site's **Members** page: type part of a name or username to find people, tick the members, and save. The page lists everyone with Reporter access or higher, so nobody types usernames, and saving commits the file to the default branch, so GitLab keeps the history. To add someone without access, give them Reporter access in GitLab first. Until a list is saved, everyone with Reporter access or higher counts as a member.
+The chair keeps it on the site's **Members** page: type part of a name or username to find people, tick the members, pick each one's role (Chair, Vice-chair, Member or Observer), and save. Roles are shown next to names, on the Members page and in the chair view; they don't change who can vote or record decisions. The page lists everyone with Reporter access or higher, so nobody types usernames, and saving commits the file to the default branch, so GitLab keeps the history. To add someone without access, give them Reporter access in GitLab first. Until a list is saved, everyone with Reporter access or higher counts as a member.
+
+**When the list changes:** open proposals count the current list. Once the chair decides a proposal, the tally recorded with the decision is what the site shows from then on, so adding or removing members later never changes a past decision. GitLab's history of `members.json` shows who was a member when.
 
 ## Terms of reference
 

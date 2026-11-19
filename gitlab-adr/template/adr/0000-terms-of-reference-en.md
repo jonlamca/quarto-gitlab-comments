@@ -9,7 +9,7 @@ The committee reviews proposed architecture decisions for [scope, for example th
 ## Membership
 
 - **Chair:** [name or role]. The chair has the Maintainer role on this GitLab project.
-- **Members:** [names or roles]. The member list on the decision site (`members.json` in the decisions folder) is the official list: only votes from people on it count. Members need the Reporter role or higher to take part.
+- **Members:** [names or roles]. The member list on the decision site (`members.json` in the decisions folder) is the official list, with each person's role (chair, vice-chair, member or observer): only votes from people on it count. Members need the Reporter role or higher to take part.
 - **Authors:** anyone with the Developer role can put a proposal on a meeting's agenda. Others can ask a member to do it for them.
 - Access to the GitLab project doesn't make someone a member. Membership changes are made by [who], and the chair updates the member list on the decision site.
 
@@ -32,6 +32,7 @@ A proposal can't be accepted until both language versions are present.
 ## Decisions
 
 - When the voting period ends and quorum is met, the chair accepts or rejects each proposal, following the decision rule. The decision site records the final tally on the proposal's ballot comment, so GitLab keeps the record.
+- A recorded tally stands even if the member list changes later.
 - The chair then closes the meeting. Accepted proposals are merged into the default branch. Rejected proposals, and any not decided, are taken out of the merge request; an author can put a deferred proposal on a later meeting's agenda.
 - If new commits are pushed after people have voted, the chair [for example, asks members to confirm their vote] before deciding.
 - An accepted decision is replaced or withdrawn by a new proposal that edits or supersedes it.

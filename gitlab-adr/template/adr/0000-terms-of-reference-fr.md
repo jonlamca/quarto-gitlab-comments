@@ -9,7 +9,7 @@ Le comité examine les décisions d'architecture proposées pour [portée, par e
 ## Composition
 
 - **Présidence :** [nom ou rôle]. La présidence a le rôle Maintainer dans ce projet GitLab.
-- **Membres :** [noms ou rôles]. La liste des membres du site des décisions (`members.json` dans le dossier des décisions) est la liste officielle : seuls les votes des personnes qui y figurent comptent. Les membres doivent avoir le rôle Reporter ou un rôle supérieur pour participer.
+- **Membres :** [noms ou rôles]. La liste des membres du site des décisions (`members.json` dans le dossier des décisions) est la liste officielle et indique le rôle de chaque personne (présidence, vice-présidence, membre ou personne observatrice) : seuls les votes des personnes qui y figurent comptent. Les membres doivent avoir le rôle Reporter ou un rôle supérieur pour participer.
 - **Auteurs :** toute personne ayant le rôle Developer peut inscrire une proposition à l'ordre du jour d'une réunion. Les autres peuvent demander à un membre de le faire en leur nom.
 - L'accès au projet GitLab ne fait pas d'une personne un membre. La composition est modifiée par [qui], et la présidence met à jour la liste des membres sur le site des décisions.
 
@@ -32,6 +32,7 @@ Une proposition ne peut pas être acceptée tant que les deux versions linguisti
 ## Décisions
 
 - À la fin de la période de vote, si le quorum est atteint, la présidence accepte ou rejette chaque proposition, selon la règle de décision. Le site des décisions consigne le décompte final sur le commentaire de vote de la proposition; GitLab en conserve ainsi la trace.
+- Un décompte consigné demeure valable même si la liste des membres change par la suite.
 - La présidence clôture ensuite la réunion. Les propositions acceptées sont fusionnées dans la branche par défaut. Les propositions rejetées, et celles qui n'ont pas été tranchées, sont retirées de la demande de fusion; un auteur peut inscrire une proposition reportée à l'ordre du jour d'une réunion ultérieure.
 - Si de nouveaux commits sont ajoutés après le début du vote, la présidence [par exemple, demande aux membres de confirmer leur vote] avant de trancher.
 - Une décision acceptée est remplacée ou retirée par une nouvelle proposition qui la modifie ou la remplace.

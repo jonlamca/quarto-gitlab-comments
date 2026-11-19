@@ -15,6 +15,7 @@ const folder = (c.folder || 'adr').replace(/^\/+|\/+$/g, '');
 const pattern = (() => { try { return new RegExp(c.titlePattern ?? '', 'i'); } catch { return null; } })(); // empty: every open MR
 const TERMS = `${folder}/0000-terms-of-reference`;
 const MEMBERS_FILE = `${folder}/members.json`;
+const ROLES = ['chair', 'vice-chair', 'member', 'observer']; // labels only: everyone on the list votes
 const BALLOT = '**Vote / Vote**'; // first line of the ballot comment on each proposal
 const BALLOT_BODY = `${BALLOT}\n\nCommittee members: react 👍 For or 👎 Against on this comment. Only votes from people on the member list count.\n\n`
   + 'Membres du comité : réagissez à ce commentaire avec 👍 Pour ou 👎 Contre. Seuls les votes des personnes inscrites sur la liste des membres comptent.';
@@ -47,7 +48,8 @@ const LABELS = {
     membersTitle: 'Committee members', membersIntro: 'Only these people’s votes count, and the chair view lists the ones who haven’t voted.',
     noListTitle: 'No member list yet', noList: 'Everyone with Reporter access or higher counts as a member until the chair saves a list on the Members page.',
     filter: 'Find by name or username', candidates: 'People with Reporter access or higher to the GitLab project. To add someone else, give them access in GitLab first.',
-    noAccessNote: 'no access', save: 'Save member list',
+    noAccessNote: 'no access', save: 'Save member list', roleFor: 'Role for',
+    roles: { chair: 'Chair', 'vice-chair': 'Vice-chair', member: 'Member', observer: 'Observer' },
   },
   fr: {
     title: "Décisions d'architecture", terms: 'Cadre de référence', members: 'Membres', noConfig: 'Indiquez project et clientId dans config.json.',
@@ -75,7 +77,8 @@ const LABELS = {
     membersTitle: 'Membres du comité', membersIntro: "Seuls les votes de ces personnes comptent, et la vue de la présidence indique celles qui n'ont pas encore voté.",
     noListTitle: 'Pas encore de liste des membres', noList: "Toute personne ayant le rôle Reporter ou un rôle supérieur compte comme membre jusqu'à ce que la présidence enregistre une liste dans la page Membres.",
     filter: "Chercher par nom ou nom d'utilisateur", candidates: "Personnes ayant le rôle Reporter ou un rôle supérieur dans le projet GitLab. Pour ajouter quelqu'un d'autre, donnez-lui d'abord accès dans GitLab.",
-    noAccessNote: 'sans accès', save: 'Enregistrer la liste des membres',
+    noAccessNote: 'sans accès', save: 'Enregistrer la liste des membres', roleFor: 'Rôle de',
+    roles: { chair: 'Présidence', 'vice-chair': 'Vice-présidence', member: 'Membre', observer: 'Personne observatrice' },
   },
 };
 const stored = (() => { try { return localStorage.getItem('adr:lang'); } catch { return null; } })();
@@ -259,18 +262,25 @@ const proposalsOf = (mr) => { // in the merge request's file order, one entry pe
   return (mr.diffStats || []).map(({ path }) => isMd(path) && byKey[keyOf(path)]).filter((a) => a && a.mr?.iid === mr.iid && !seen.has(a) && seen.add(a));
 };
 
-// Votes: 👍/👎 reactions on the proposal's ballot, a file comment starting with BALLOT. Only members' reactions count.
+// Votes: 👍/👎 reactions on the proposal's ballot, a file comment starting with BALLOT. Only current members' reactions count.
 // Decisions: the latest reply in the ballot thread starting "**Accepted /" or "**Rejected /" by someone with Maintainer access.
+// A decision carries its tally (also as JSON in an HTML comment, which GitLab doesn't show), and from then on that tally is
+// what the site shows, so later changes to the member list don't rewrite past decisions.
 const ballotPath = (a) => a.prop.en ?? a.prop.fr ?? a.prop[''] ?? a.main.en ?? a.main.fr ?? a.main[''];
 const isBallot = (t) => t.notes.nodes[0]?.body?.startsWith(BALLOT);
 const ballot = (mr, a) => mr?.discussions.nodes.find((t) => isBallot(t) && t.notes.nodes[0].position?.newPath === ballotPath(a)); // first, if two were started at once
 const reactors = (x, n) => (x?.awardEmoji.nodes || []).filter((r) => r.name === n && r.user).map((r) => r.user);
 const isMember = (u) => members.some((m) => m.username === u.username);
-const votes = (mr, a, n) => reactors(ballot(mr, a)?.notes.nodes[0], n).filter(isMember);
-const uncounted = (mr, a) => ['thumbsup', 'thumbsdown'].flatMap((n) => reactors(ballot(mr, a)?.notes.nodes[0], n).filter((u) => !isMember(u)));
+const roleOf = (u) => members.find((m) => m.username === u.username)?.role;
+const named = (users) => users.map((u) => (roleOf(u) && roleOf(u) !== 'member' ? `${u.name} (${L.roles[roleOf(u)]})` : u.name)).join(', ');
+const decisionNote = (mr, a) => [...(ballot(mr, a)?.notes.nodes || [])].reverse()
+  .find((x) => maintainers.has(x.author?.username) && /^\*\*(Accepted|Rejected) \//.test(x.body));
+const decision = (mr, a) => decisionNote(mr, a)?.body.match(/^\*\*(\w+)/)[1];
+const frozen = (mr, a) => { try { return JSON.parse(decisionNote(mr, a).body.match(/<!-- tally (.+?) -->/)[1]); } catch { return null; } };
+const live = (mr, a, n) => reactors(ballot(mr, a)?.notes.nodes[0], n).filter(isMember);
+const votes = (mr, a, n) => frozen(mr, a)?.[n] ?? live(mr, a, n);
+const uncounted = (mr, a) => (frozen(mr, a) ? [] : ['thumbsup', 'thumbsdown'].flatMap((n) => reactors(ballot(mr, a)?.notes.nodes[0], n).filter((u) => !isMember(u))));
 const mine = (x, n) => reactors(x, n).some((u) => u.username === me.username);
-const decision = (mr, a) => [...(ballot(mr, a)?.notes.nodes || [])].reverse()
-  .find((x) => maintainers.has(x.author?.username) && /^\*\*(Accepted|Rejected) \//.test(x.body))?.body.match(/^\*\*(\w+)/)[1];
 
 async function load() {
   doc = null;
@@ -303,8 +313,10 @@ async function load() {
   for (const a of docs) for (const l of Object.keys(variants(a))) {
     a.text[l] = a.prop[l] ? branches[meetings.indexOf(a.mr)][a.prop[l]] : main[a.main[l]]; // none: removed
   }
-  try { members = JSON.parse(main[MEMBERS_FILE]).members.filter((u) => u.username); hasList = true; }
-  catch { members = people; hasList = false; }
+  try {
+    members = JSON.parse(main[MEMBERS_FILE]).members.filter((u) => u.username).map((u) => ({ ...u, role: ROLES.includes(u.role) ? u.role : 'member' }));
+    hasList = true;
+  } catch { members = people.map((u) => ({ ...u, role: 'member' })); hasList = false; }
 
   // Votes, comments and decisions: one query per open meeting (usually one or two), plus the meeting that accepted the file shown.
   const a = byKey[keyOf(route())];
@@ -472,7 +484,7 @@ function docView() {
 }
 
 function chairView() {
-  const cell = (users) => `${users.length}${users.length ? `<br>${h(list(users))}` : ''}`;
+  const cell = (users) => `${users.length}${users.length ? `<br>${h(named(users))}` : ''}`;
   const meeting = (mr) => {
     const m = details[mr.iid];
     const rows = proposalsOf(mr).map((a) => {
@@ -484,7 +496,7 @@ function chairView() {
       const btn = (v, text, role) => `<gcds-button size="small" button-role="${role}" data-decide="${v}" data-iid="${h(mr.iid)}" data-key="${h(a.key)}"
         ${v === 'Accepted' && missing.length ? `disabled title="${L.needsBoth}"` : ''}>${text}</gcds-button>`;
       return `<tr><th scope="row">${docLink(a)}</th><td>${cell(yes)}</td><td>${cell(no)}</td>
-        <td>${h(list(members.filter((u) => !voted.has(u.username)))) || '—'}${off.length ? `<br>${L.notCounted} ${h(list(off))}` : ''}</td>
+        <td>${decision(m, a) ? '—' : h(named(members.filter((u) => !voted.has(u.username)))) || '—'}${off.length ? `<br>${L.notCounted} ${h(list(off))}` : ''}</td>
         <td>${missing.map((l) => l.toUpperCase()).join(', ') || '—'}</td>
         <td>${decLabel(decision(m, a)) || '—'}</td>
         <td>${mr.userPermissions.canMerge ? `${btn('Accepted', L.accept, 'primary')} ${btn('Rejected', L.reject, 'secondary')}` : '—'}</td></tr>`;
@@ -503,9 +515,12 @@ function chairView() {
     ${hasList ? '' : notice(L.noListTitle, L.noList)}${meetings.map(meeting).join('') || muted(L.none)}`;
 }
 
-// The member list is picked from the project's people, so nobody types usernames. Saving commits members.json.
+// The member list is picked from the project's people, so nobody types usernames; each person also gets a role, which is
+// shown next to their name and has no effect on voting. Saving commits members.json.
 function membersView() {
   const listed = new Set(hasList ? members.map((u) => u.username) : []);
+  const roles = (u) => `<select class="adr-role" aria-label="${h(`${L.roleFor} ${u.name}`)}">${ROLES.map((r) => `<option value="${r}"
+    ${(roleOf(u) || 'member') === r ? 'selected' : ''}>${L.roles[r]}</option>`).join('')}</select>`;
   const candidates = [...people, ...members.filter((u) => !people.some((p) => p.username === u.username))]
     .sort((x, y) => x.name.localeCompare(y.name));
   const noAccess = (u) => !people.some((p) => p.username === u.username);
@@ -514,9 +529,9 @@ function membersView() {
     ${project.userPermissions.pushCode ? `<gcds-input input-id="adr-filter" name="filter" type="search" label="${L.filter}" hint="${L.candidates}"></gcds-input>
       <ul class="adr-people">${candidates.map((u) => `<li data-q="${h(`${u.name} ${u.username}`.toLowerCase())}"><label>
         <input type="checkbox" value="${h(u.username)}" data-name="${h(u.name)}" ${listed.has(u.username) ? 'checked' : ''}>
-        ${h(u.name)} <span class="adr-handle">@${h(u.username)}${noAccess(u) ? ` · ${L.noAccessNote}` : ''}</span></label></li>`).join('')}</ul>
+        ${h(u.name)} <span class="adr-handle">@${h(u.username)}${noAccess(u) ? ` · ${L.noAccessNote}` : ''}</span></label>${roles(u)}</li>`).join('')}</ul>
       <gcds-button data-action="save-members">${L.save}</gcds-button>`
-    : `<ul class="adr-list">${members.map((u) => `<li>${h(u.name)} <span class="adr-handle">@${h(u.username)}</span></li>`).join('')}</ul>`}`;
+    : `<ul class="adr-list">${members.map((u) => `<li>${h(u.name)} <span class="adr-handle">@${h(u.username)}</span> · ${L.roles[u.role]}</li>`).join('')}</ul>`}`;
 }
 
 function render() {
@@ -543,9 +558,13 @@ async function go() {
   scrollTo(0, 0);
 }
 
-// The tally goes into GitLab with the decision, in both languages, so the record doesn't depend on this site.
-const tally = (verdict, mr, a) => `**${verdict}** — 👍 For / Pour : ${votes(mr, a, 'thumbsup').length} (${list(votes(mr, a, 'thumbsup')) || '—'}) · `
-  + `👎 Against / Contre : ${votes(mr, a, 'thumbsdown').length} (${list(votes(mr, a, 'thumbsdown')) || '—'})`;
+// The tally goes into GitLab with the decision, in both languages, so the record doesn't depend on this site. The same
+// tally as JSON lets the site show exactly what was decided, whatever happens to the member list later.
+const tally = (verdict, mr, a) => {
+  const [yes, no] = ['thumbsup', 'thumbsdown'].map((n) => live(mr, a, n).map(({ username, name }) => ({ username, name })));
+  return `**${verdict}** — 👍 For / Pour : ${yes.length} (${list(yes) || '—'}) · 👎 Against / Contre : ${no.length} (${list(no) || '—'})`
+    + `\n\n<!-- tally ${JSON.stringify({ thumbsup: yes, thumbsdown: no }).replace(/--/g, '- -')} -->`;
+};
 const nums = (docs) => docs.map((a) => num(a) ?? base(a.key)).join(', ') || '—';
 
 async function toggle(x, n) {
@@ -662,7 +681,8 @@ el.addEventListener('click', async (e) => {
       return;
     }
     if (b.dataset.action === 'save-members') {
-      const picked = [...el.querySelectorAll('.adr-people input:checked')].map((i) => ({ username: i.value, name: i.dataset.name }));
+      const picked = [...el.querySelectorAll('.adr-people input:checked')]
+        .map((i) => ({ username: i.value, name: i.dataset.name, role: i.closest('li').querySelector('.adr-role').value }));
       await gql(COMMIT, { p: c.project, b: rootRef, m: 'Update committee members', a: [{ action: hasList ? 'UPDATE' : 'CREATE',
         filePath: MEMBERS_FILE, content: `${JSON.stringify({ members: picked }, null, 2)}\n` }] });
       return go();
