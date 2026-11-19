@@ -21,7 +21,8 @@
 
   // Tiny stand-in for GitLab's renderer, with data-sourcepos on each top-level block like GitLab's.
   const esc = (t) => t.replace(/[&<>]/g, (ch) => `&#${ch.charCodeAt(0)};`);
-  const inline = (t) => esc(t).replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>').replace(/_([^_]+)_/g, '<em>$1</em>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  const inline = (t) => esc(t).replace(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g, '<a class="no-attachment-icon" href="$2" target="_blank"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="$1" class="lazy" data-src="$2"></a>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>').replace(/_([^_]+)_/g, '<em>$1</em>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>');
   const block = (b, sp) => {
     const m = b.match(/^(#+) (.+)/);
     if (m) return `<h${m[1].length}${sp} dir="auto"><a href="#x" aria-hidden="true" class="anchor" id="user-content-x"></a>${inline(m[2])}</h${m[1].length}>`;
@@ -87,12 +88,13 @@
     [`meeting-2026-11-20:${P2}`]: '# Use GitLab as the system of record\n\n## Context\nWe need one place for decisions.\n\n## Decision\nDecisions live in GitLab merge requests.',
     'meeting-2026-11-20:adr/0003-adopt-postgres-en.md': '# Adopt PostgreSQL\n\n## Context\nWe run three database engines. See [the inventory](/demo/adr/-/wikis/inventory).\n\n## Decision\nNew services use PostgreSQL.\n\n| Option | Cost |\n|---|---|\n| PostgreSQL | Low |\n| Oracle | High |',
     'meeting-2026-11-20:adr/0003-adopt-postgres-fr.md': '# Adopter PostgreSQL\n\n## Contexte\nNous utilisons trois moteurs de base de données.\n\n## Décision\nLes nouveaux services utilisent PostgreSQL.\n\n| Option | Coût |\n|---|---|\n| PostgreSQL | Faible |\n| Oracle | Élevé |',
-    'meeting-2026-11-20:adr/0005-pg-backups-en.md': "---\nstatus: proposed\ndate: 2026-11-15\ndecision-makers:\n  - Priya Shah\n  - Marco Rossi\nconsulted: [Dana Kim, \"Lee Wong\"]\n# informed: {list everyone kept up to date}\n---\n# Back up PostgreSQL nightly\n\n## Context\nBackups today are manual and nobody has tested a restore.\n\n## Decision\nTake nightly backups and test a restore monthly.\n\n### Retention\nKeep 35 days of backups.\n\n## Consequences\nStorage costs rise slightly.",
-    'meeting-2026-11-20:adr/0005-pg-backups-fr.md': "---\nstatus: proposée\ndate: 2026-11-15\ndecision-makers:\n  - Priya Shah\n  - Marco Rossi\nconsulted: [Dana Kim, \"Lee Wong\"]\n---\n# Sauvegarder PostgreSQL chaque nuit\n\n## Contexte\nLes sauvegardes sont manuelles et personne n'a testé de restauration.\n\n## Décision\nFaire une sauvegarde chaque nuit et tester une restauration chaque mois.\n\n### Conservation\nConserver 35 jours de sauvegardes.\n\n## Conséquences\nLes coûts de stockage augmentent légèrement.",
+    'meeting-2026-11-20:adr/0005-pg-backups-en.md': "---\nstatus: proposed\ndate: 2026-11-15\ndecision-makers:\n  - Priya Shah\n  - Marco Rossi\nconsulted: [Dana Kim, \"Lee Wong\"]\n# informed: {list everyone kept up to date}\n---\n# Back up PostgreSQL nightly\n\n## Context\nBackups today are manual and nobody has tested a restore.\n\n## Decision\nTake nightly backups and test a restore monthly.\n\n![Backup flow](img/backup-flow.svg)\n\n### Retention\nKeep 35 days of backups.\n\n## Consequences\nStorage costs rise slightly.",
+    'meeting-2026-11-20:adr/0005-pg-backups-fr.md': "---\nstatus: proposée\ndate: 2026-11-15\ndecision-makers:\n  - Priya Shah\n  - Marco Rossi\nconsulted: [Dana Kim, \"Lee Wong\"]\n---\n# Sauvegarder PostgreSQL chaque nuit\n\n## Contexte\nLes sauvegardes sont manuelles et personne n'a testé de restauration.\n\n## Décision\nFaire une sauvegarde chaque nuit et tester une restauration chaque mois.\n\n![Flux de sauvegarde](img/backup-flow.svg)\n\n### Conservation\nConserver 35 jours de sauvegardes.\n\n## Conséquences\nLes coûts de stockage augmentent légèrement.",
     'meeting-2026-12-04:adr/0004-retire-ftp-en.md': "---\ntitle: Retire FTP by 2027\n---\n\n## Decision\nReplace FTP transfers with SFTP by 2027.",
     'main:adr/members.json': JSON.stringify({ members: [{ ...alex, voting: true, group: 'Enterprise Architecture' }, { ...priya, voting: true, group: 'Data Platform' },
       { ...marco, voting: true, group: 'IT Security' }, { ...dana, voting: false, group: 'Communications' }] }, null, 2),
     'main:adr/img/logo.png': '',
+    'meeting-2026-11-20:adr/img/backup-flow.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 90" font-family="sans-serif" font-size="15"><g fill="#e8f0f8" stroke="#26374a"><rect x="5" y="20" width="140" height="50" rx="6"/><rect x="190" y="20" width="140" height="50" rx="6"/><rect x="375" y="20" width="140" height="50" rx="6"/></g><g fill="#26374a" text-anchor="middle"><text x="75" y="50">Database</text><text x="260" y="50">Nightly backup</text><text x="445" y="50">Monthly restore</text></g><g stroke="#26374a" stroke-width="2"><line x1="145" y1="45" x2="185" y2="45"/><line x1="330" y1="45" x2="370" y2="45"/></g></svg>',
     'meeting-2026-11-20:adr/members.json': JSON.stringify({ members: [{ username: 'bob', name: 'Bob Guest', voting: true }] }),
   };
   // GitLab's id for a file's content (here a short hash): it changes with every edit, which is how the site tells versions apart.
@@ -123,6 +125,12 @@
     if (url.endsWith('/oauth/token')) return json({ access_token: 'mock-token' });
     if (url.endsWith('/api/v4/markdown')) return json({ html: md(JSON.parse(opts.body).text) });
     await tor;
+    const raw = url.match(/\/repository\/files\/([^/]+)\/raw\?ref=([^&]+)/);
+    if (raw) {
+      const body = files[`${decodeURIComponent(raw[2])}:${decodeURIComponent(raw[1])}`];
+      window.__calls.push({ op: 'GET raw', path: decodeURIComponent(raw[1]), ref: decodeURIComponent(raw[2]), found: body != null });
+      return body == null ? json({ message: '404 File Not Found' }, 404) : new Response(body, { headers: { 'Content-Type': 'text/plain' } });
+    }
     const rest = url.match(/\/api\/v4\/projects\/[^/]+\/merge_requests\/(\d+)\/(diffs|discussions)/);
     if (rest && rest[2] === 'diffs') return json(diffs(mrs[rest[1]]));
     if (rest) {

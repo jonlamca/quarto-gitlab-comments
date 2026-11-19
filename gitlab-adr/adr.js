@@ -223,6 +223,53 @@ const mrApi = (iid) => `/projects/${encodeURIComponent(c.project)}/merge_request
 // GitLab renders (and sanitizes) the Markdown, so ADRs look as they do in GitLab. gitlab.com requires sign-in for this.
 const markdown = async (text, dropTitle) => fix((await api('POST', '/markdown', { text, gfm: true, project: c.project })).html, dropTitle);
 
+// Images. GitLab's Markdown API doesn't know which file or branch it's rendering, so it would point a relative image at a
+// /-/blob/ page from the repository's root. Instead, image paths are resolved here (relative to the file; a leading / means
+// the repository's root, as on GitLab's own pages) and swapped for a placeholder address GitLab leaves alone. After
+// rendering, each image is fetched through the API with the signed-in person's token (private projects work) from the
+// right branch, and shown from memory.
+// ponytail: reference-style images (![alt][id]) aren't resolved; add them if anyone uses them.
+const IMG = 'https://adr-image.invalid/'; // .invalid is reserved, so this never reaches the network
+function markImages(text, file) {
+  const dir = file.split('/').slice(0, -1);
+  const resolve = (u) => {
+    if (/^([a-z][\w+.-]*:|\/\/|#)/i.test(u)) return null; // absolute URLs, data:, anchors
+    const parts = u.startsWith('/') ? [] : [...dir];
+    const raw = u.split(/[?#]/)[0];
+    let path = raw;
+    try { path = decodeURIComponent(raw); } catch { /* a stray % : use it as written */ }
+    for (const seg of path.split('/')) {
+      if (seg === '..') parts.pop(); else if (seg && seg !== '.') parts.push(seg);
+    }
+    return IMG + parts.map(encodeURIComponent).join('/');
+  };
+  return text.split(/(^ {0,3}(?:```|~~~)[\s\S]*?^ {0,3}(?:```|~~~))/m).map((chunk, i) => (i % 2 ? chunk // code blocks stay as written
+    : chunk.replace(/(!\[[^\]]*\]\(\s*<?)([^)\s>]+)/g, (m, pre, u) => pre + (resolve(u) ?? u))
+      .replace(/(<img\b[^>]*\bsrc=["'])([^"']+)/gi, (m, pre, u) => pre + (resolve(u) ?? u)))).join('');
+}
+const TYPES = { svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' };
+const images = {}; // `${ref}:${path}` -> object URL, or null if the file couldn't be read
+async function loadImages(html, ref) {
+  const t = document.createElement('template');
+  t.innerHTML = html;
+  await Promise.all([...t.content.querySelectorAll('img')].map(async (img) => {
+    const src = img.dataset.canonicalSrc || img.getAttribute('src') || ''; // canonical-src: an instance's image proxy
+    if (!src.startsWith(IMG)) return;
+    const path = decodeURIComponent(src.slice(IMG.length));
+    images[`${ref}:${path}`] ??= fetch(`${gitlab}/api/v4/projects/${encodeURIComponent(c.project)}/repository/files/${encodeURIComponent(path)}/raw?ref=${encodeURIComponent(ref)}`,
+      { headers: { Authorization: `Bearer ${s.getItem('adr:token')}` } })
+      .then((r) => (r.ok ? r.blob() : null))
+      .then((b) => b && URL.createObjectURL(new Blob([b], { type: TYPES[path.split('.').pop().toLowerCase()] || b.type })))
+      .catch(() => null);
+    const url = await images[`${ref}:${path}`];
+    const link = img.closest('a');
+    if (url) img.setAttribute('src', url); else img.removeAttribute('src'); // missing: the alt text shows instead
+    img.removeAttribute('data-src'); // GitLab's lazy-loading copy of the address, no longer needed
+    if (link?.getAttribute('href')?.startsWith(IMG)) { if (url) link.setAttribute('href', url); else link.removeAttribute('href'); }
+  }));
+  return t.innerHTML;
+}
+
 // YAML front matter: a leading ---…--- block of key: value lines (quotes and # comments allowed; lists as [a, b] or indented
 // "- item" lines), as in the MADR template. Returns { meta, body, offset }; offset is the number of lines taken off the top,
 // so margin comments can still use the file's own line numbers.
@@ -399,7 +446,8 @@ async function load() {
   const iids = [...meetings.map((mr) => mr.iid), ...(a && !a.mr && a.merged ? [a.merged.iid] : [])];
   details = Object.fromEntries(await Promise.all(iids.map(async (iid) => [iid, await detail(iid)])));
   if (a) {
-    const [en, fr, none] = await Promise.all(['en', 'fr', ''].map((l) => a.fm[l] && markdown(a.fm[l].body, !a.fm[l].meta.title)));
+    const [en, fr, none] = await Promise.all(['en', 'fr', ''].map(async (l) => a.fm[l]
+      && loadImages(await markdown(markImages(a.fm[l].body, variants(a)[l]), !a.fm[l].meta.title), a.prop[l] ? a.mr.sourceBranch : rootRef)));
     doc = { a, mr: details[(a.mr || a.merged)?.iid], html: { en, fr, '': none } };
   }
 }
