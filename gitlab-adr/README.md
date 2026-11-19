@@ -5,7 +5,7 @@ A small website where a committee proposes, discusses, votes on and records Arch
 - A **meeting** is a merge request named after it, such as `2026-11-20 - Meeting`. Each ADR it adds or changes is a separate **proposal**, in English and French.
 - Committee members **vote** 👍 For or 👎 Against on each proposal. Anyone with access **comments** in the margin beside a paragraph, on a proposal as a whole, or on the meeting.
 - The **chair** accepts or rejects each proposal, then **closes the meeting**: proposals that weren't accepted are taken out of the merge request, and the rest is merged.
-- The default branch holds the **accepted** decisions. Who's on the committee is a list the chair keeps on the site, separate from who can open the repository.
+- The **main branch**, named in `config.json`, holds the **accepted** decisions and the committee's member list. Who's on the committee is a list the chair keeps on the site, separate from who can open the repository.
 
 The site is a few static files: `index.html`, `adr.js` and the deploy-time settings in `config.json`. They read GitLab in the browser, so there's no backend or build step, and new proposals show up without redeploying. It uses [GC Design System](https://design-system.alpha.canada.ca/) components and is fully bilingual on one page: the header's English/Français link switches every label and the ADR text in place.
 
@@ -31,6 +31,7 @@ The site is a few static files: `index.html`, `adr.js` and the deploy-time setti
      "gitlab": "https://gitlab.com",
      "project": "your-group/adr",
      "clientId": "YOUR_APPLICATION_ID",
+     "branch": "main",
      "folder": "adr",
      "titlePattern": "^\\d{4}-\\d{2}-\\d{2} - Meeting",
      "fileComments": true,
@@ -49,7 +50,8 @@ The site is a few static files: `index.html`, `adr.js` and the deploy-time setti
    | `gitlab` | Your GitLab instance. |
    | `project` | The ADR project's full path. Required. |
    | `clientId` | The application ID from step 2. Required. |
-   | `folder` | The folder on the default branch that holds accepted ADRs, subfolders included, for example `adr` or `tiger`. |
+   | `branch` | The main branch: it holds the accepted decisions and the member list, and meetings are merge requests into it. Merge requests into other branches are ignored. Default: the project's default branch. |
+   | `folder` | The folder on the main branch that holds accepted ADRs and `members.json`, subfolders included, for example `adr` or `tiger`. |
    | `titlePattern` | A regular expression for meeting merge request titles. The example matches `2026-11-20 - Meeting`; in JSON each backslash is doubled. Empty: every open merge request is a meeting. |
    | `fileComments` | `false` removes the box for commenting on a proposal as a whole, leaving margin comments and meeting discussion. File comments made in GitLab, and margin comments whose line has changed, still show. Default: `true`. |
    | `marginComments` | `false` removes the margins beside paragraphs and their **Comment** buttons. Margin comments that already exist (for example, made in GitLab) show under "Comments on this file" with their line number. Default: `true`. With both set to `false`, members comment only in the meeting discussion. |
@@ -97,13 +99,13 @@ Ce que nous ferons.
 Ce qui devient plus facile ou plus difficile.
 ```
 
-To put proposals on a meeting's agenda, add their files to that meeting's branch. Someone opens one merge request per meeting into the default branch, named to match `titlePattern`, for example `2026-11-20 - Meeting`; GitLab's Web IDE can create the branch, files and merge request. Each ADR in it is a separate proposal with its own vote, comments and decision. Other files in the merge request, such as images, aren't listed on the site and are merged with the meeting. To change an accepted decision, add an edit of its files to a meeting. Markdown files without a language suffix are shown as they are, in both languages.
+To put proposals on a meeting's agenda, add their files to that meeting's branch. Someone opens one merge request per meeting into the main branch, named to match `titlePattern`, for example `2026-11-20 - Meeting`; GitLab's Web IDE can create the branch, files and merge request. Each ADR in it is a separate proposal with its own vote, comments and decision. Other files in the merge request, such as images, aren't listed on the site and are merged with the meeting. To change an accepted decision, add an edit of its files to a meeting. Markdown files without a language suffix are shown as they are, in both languages.
 
 ## Committee members
 
 Committee membership isn't the same as access to the GitLab project: authors, observers and administrators can open it too. The member list is `members.json` in the ADR folder. It says whether each member is voting or non-voting and which group they represent, and only voting members' votes count.
 
-The chair keeps it on the site's **Members** page: type part of a name or username to find people, tick the members, set each one as **voting** or **non-voting**, type the **group** they represent (groups already on the list are suggested, to keep names consistent), and save. The filter also finds people by group. Groups are shown next to names on the Members page and in the chair view. The page lists everyone with Reporter access or higher, so nobody types usernames, and saving commits the file to the default branch, so GitLab keeps the history. To add someone without access, give them Reporter access in GitLab first. Until a list is saved, everyone with Reporter access or higher counts as a member.
+The chair keeps it on the site's **Members** page: type part of a name or username to find people, tick the members, set each one as **voting** or **non-voting**, type the **group** they represent (groups already on the list are suggested, to keep names consistent), and save. The filter also finds people by group. Groups are shown next to names on the Members page and in the chair view. The page lists everyone with Reporter access or higher, so nobody types usernames, and saving commits the file to the main branch, so GitLab keeps the history. The site always reads the list from the main branch, never from a meeting's branch. To add someone without access, give them Reporter access in GitLab first. Until a list is saved, everyone with Reporter access or higher counts as a member.
 
 **When the list changes:** open proposals count the current list. Once the chair decides a proposal, the tally recorded with the decision is what the site shows from then on, so adding or removing members later never changes a past decision. GitLab's history of `members.json` shows who was a member when.
 
@@ -127,7 +129,7 @@ The committee's terms of reference are ADR 0000, `0000-terms-of-reference-en.md`
 - **Members (`#/members`):** the committee, and for the chair the editor described in [Committee members](#committee-members).
 - **Chair view (`#/chair`):** for each open meeting, every proposal with For and Against (names and groups), which voting members haven't voted yet, missing translations and the decision so far, plus GitLab's merge status. People with Maintainer access get:
   - **Accept** and **Reject** on each proposal. Each posts the tally as a reply on the proposal's ballot comment, so GitLab keeps the record; the latest decision counts, so a mistake can be corrected. Accept needs both language files.
-  - **Close meeting.** Proposals that weren't accepted are taken out of the merge request in one commit: new files are deleted and changed ones are put back as they are on the default branch. Then the merge request is merged, with a summary comment. If nothing was accepted, the merge request is closed instead. The site refuses to close a meeting if new commits arrived after the page loaded, so nothing unreviewed is merged.
+  - **Close meeting.** Proposals that weren't accepted are taken out of the merge request in one commit: new files are deleted and changed ones are put back as they are on the main branch. Then the merge request is merged, with a summary comment. If nothing was accepted, the merge request is closed instead. The site refuses to close a meeting if new commits arrived after the page loaded, so nothing unreviewed is merged.
 - **Comments made at a meeting:** when the chair comments anywhere, an **On behalf of** list lets them record what a member said. The comment is posted under the chair's account and starts with *On behalf of / Au nom de* and the member's name, written as plain text so no notification is sent.
 
 Votes are GitLab reactions on a **ballot comment** that the site adds to each proposal's file the first time someone votes. Members can also vote by reacting 👍 or 👎 to that comment in GitLab. Comments are GitLab comments: margin comments are line comments on the merge request's changes, and file comments are GitLab file comments. So everything also shows in GitLab, and none of it is anonymous.
@@ -141,7 +143,7 @@ Votes are GitLab reactions on a **ballot comment** that the site adds to each pr
 - **Closing a meeting:** files that aren't Markdown, such as images, are merged with the meeting, whichever proposal they belong to. Closing waits up to 20 seconds for GitLab to process the commit that takes proposals out; if GitLab is slower, the merge fails and the chair clicks **Close meeting** again. Meetings from forks aren't supported, since the site commits to the meeting's branch.
 - **Comments belong to one file:** comments on the English version of a decision don't show on the French page, and the other way round. Meeting discussion shows on every page.
 - **Margin comments:** a comment is attached to the paragraph's first line. A long thread pushes the next paragraph down rather than overlapping it. Comments on an accepted decision are placed by line as of the merge, so they can land on the wrong paragraph if the file was changed later without a proposal. Margin comments rely on GitLab marking source lines in its rendered Markdown; without that, file comments still work. Comments on renamed files haven't been tested.
-- **Images:** images in a proposal may not show until it's merged, because GitLab links them to the default branch.
+- **Images:** images in a proposal may not show until it's merged, because GitLab links them to the project's default branch.
 - **Translation review:** the French interface text, the French title and subtitle in `config.json`, and the French terms of reference template use Canadian typography. Have a fluent speaker review them.
 - **Footer:** the footer shows only the Canada wordmark, which the Federal Identity Program requires on Government of Canada sites. It has no links or text.
 - **Tested against:** the current gitlab.com API. The minimum self-managed GitLab version hasn't been checked.

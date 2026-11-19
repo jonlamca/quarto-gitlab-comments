@@ -125,13 +125,13 @@ const hover = (users) => { // like GitLab: first 10 names, then +N
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Limit: first 100 of each list (open and merged MRs, files, diffs, project members, threads, reactions); paginate when outgrown.
-const MR = `id iid title webUrl state sourceBranch diffHeadSha detailedMergeStatus mergedAt author { name } diffStats { path }
+const MR = `id iid title webUrl state sourceBranch targetBranch diffHeadSha detailedMergeStatus mergedAt author { name } diffStats { path }
   userPermissions { canMerge createNote }`;
-const LIST = `query($p: ID!, $f: String!) { currentUser { username name }
-  project(fullPath: $p) { userPermissions { pushCode } repository { rootRef tree(path: $f, recursive: true) { blobs(first: 100) { nodes { path } } } }
+const LIST = `query($p: ID!, $f: String!, $r: String) { currentUser { username name }
+  project(fullPath: $p) { userPermissions { pushCode } repository { rootRef tree(path: $f, ref: $r, recursive: true) { blobs(first: 100) { nodes { path } } } }
     projectMembers(first: 100) { nodes { accessLevel { integerValue } user { name username } } }
     open: mergeRequests(state: opened, first: 100) { nodes { ${MR} } }
-    merged: mergeRequests(state: merged, sort: MERGED_AT_DESC, first: 100) { nodes { iid title mergedAt diffStats { path } } } } }`;
+    merged: mergeRequests(state: merged, sort: MERGED_AT_DESC, first: 100) { nodes { iid title targetBranch mergedAt diffStats { path } } } } }`;
 const BLOBS = `query($p: ID!, $r: String!, $paths: [String!]!) { project(fullPath: $p) { repository {
   blobs(ref: $r, paths: $paths, first: 100) { nodes { path rawTextBlob } } } } }`;
 const DETAIL = `query($p: ID!, $iid: String!) { project(fullPath: $p) { mergeRequest(iid: $iid) { ${MR} diffRefs { baseSha headSha startSha }
@@ -236,7 +236,7 @@ async function callback() {
 // State, refreshed by load() on each route change; render() draws it in the current language.
 let me = null; // { username, name }
 let project = null;
-let rootRef = 'main';
+let rootRef = 'main'; // the record branch: config.json's branch, else the project's default branch
 let meetings = []; // open merge requests whose title matches titlePattern
 let details = {}; // iid -> merge request with discussions (open meetings, and the one that accepted the file on screen)
 let byKey = {}; // proposals: Markdown files by path without -en/-fr.md: { key, main: {lang: path} on the default branch,
@@ -287,15 +287,15 @@ async function load() {
   doc = null;
   me = null;
   if (!s.getItem('adr:token')) return;
-  const d = await gql(LIST, { p: c.project, f: folder });
+  const d = await gql(LIST, { p: c.project, f: folder, r: c.branch || null });
   me = d.currentUser;
   project = d.project;
   if (!me || !project) return;
-  rootRef = project.repository.rootRef;
+  rootRef = c.branch || project.repository.rootRef;
   const pm = project.projectMembers.nodes.filter((m) => m.user);
   people = pm.filter((m) => m.accessLevel.integerValue >= 20).map((m) => m.user);
   maintainers = new Set(pm.filter((m) => m.accessLevel.integerValue >= 40).map((m) => m.user.username));
-  const rfc = (mr) => pattern.test(mr.title);
+  const rfc = (mr) => mr.targetBranch === rootRef && pattern.test(mr.title); // meetings merge into the record branch
   meetings = project.open.nodes.filter(rfc);
   byKey = {};
   const entry = (path) => (byKey[keyOf(path)] ||= { key: keyOf(path), main: {}, prop: {}, text: {} });
@@ -307,7 +307,7 @@ async function load() {
     if (byKey[keyOf(path)]) byKey[keyOf(path)].merged ||= mr;
   }
 
-  // Text: a proposal's files from its meeting's branch, everything else (and members.json) from the default branch.
+  // Text: a proposal's files from its meeting's branch; everything else, and always members.json, from the record branch.
   const docs = Object.values(byKey);
   const [main, ...branches] = await Promise.all([blobsAt(rootRef, [...docs.flatMap((a) => Object.values(a.main)), MEMBERS_FILE]),
     ...meetings.map((mr) => blobsAt(mr.sourceBranch, docs.filter((a) => a.mr === mr).flatMap((a) => Object.values(a.prop))))]);
