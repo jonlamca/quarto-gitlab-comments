@@ -34,6 +34,7 @@ The site is a few static files: `index.html`, `adr.js` and the deploy-time setti
      "folder": "adr",
      "titlePattern": "^\\d{4}-\\d{2}-\\d{2} - Meeting",
      "fileComments": true,
+     "marginComments": true,
      "title": { "en": "StatCan Developer Program", "fr": "Programme des développeurs de StatCan" },
      "subtitle": { "en": "TIGER (technology, integration, governance, engineering review)", "fr": "TIGER (technologie, intégration, gouvernance, examen de l’ingénierie)" },
      "signature": {
@@ -51,6 +52,7 @@ The site is a few static files: `index.html`, `adr.js` and the deploy-time setti
    | `folder` | The folder on the default branch that holds accepted ADRs, subfolders included, for example `adr` or `tiger`. |
    | `titlePattern` | A regular expression for meeting merge request titles. The example matches `2026-11-20 - Meeting`; in JSON each backslash is doubled. Empty: every open merge request is a meeting. |
    | `fileComments` | `false` removes the box for commenting on a proposal as a whole, leaving margin comments and meeting discussion. File comments made in GitLab, and margin comments whose line has changed, still show. Default: `true`. |
+   | `marginComments` | `false` removes the margins beside paragraphs and their **Comment** buttons. Margin comments that already exist (for example, made in GitLab) show under "Comments on this file" with their line number. Default: `true`. With both set to `false`, members comment only in the meeting discussion. |
    | `title`, `subtitle` | The home page heading and the line under it. Each is one string, or an `en` and `fr` pair. |
    | `signature` | The department signature in the header, per language: image file, alt text and link. Leave it out to show the Government of Canada signature. |
 
@@ -117,7 +119,7 @@ The committee's terms of reference are ADR 0000, `0000-terms-of-reference-en.md`
 - **A proposal (its file's path, for example `#/adr/0007-adopt-postgres-en.md`):**
   - The file, rendered by GitLab. The address names the language: switching language moves to the `-fr.md` file without reloading, and a link to a `-fr.md` file opens in French. If one language's file is missing, a notice says so and the other language is shown.
   - The other proposals and files at the same meeting.
-  - **Margin comments:** on wide screens each paragraph has a margin beside it, as in a word processor, with its comment threads as cards and a **Comment** button that appears on hover or keyboard focus. Commented paragraphs are highlighted. On narrow screens the margin sits below the paragraph.
+  - **Margin comments:** on wide screens each paragraph has a margin beside it, as in a word processor, with its comment threads as cards and a **Comment** button that appears on hover or keyboard focus. Commented paragraphs are highlighted. On narrow screens the margin sits below the paragraph. `marginComments` in `config.json` turns this off.
   - **Vote:** 👍 For and 👎 Against. Each member gets one vote per proposal, so voting For removes an Against and the other way round. Hovering over a vote shows who voted. Reactions from anyone who isn't a voting member, including non-voting members, are shown as not counted. Voting stops once the chair records a decision.
   - **Comments on this file:** threads about the proposal as a whole, plus margin comments that can't be placed beside a paragraph, such as those on a line that has since changed. With `fileComments` set to `false` there's no box to start one, and the section only appears when it has threads to show.
   - **Meeting discussion:** the merge request's general discussion.

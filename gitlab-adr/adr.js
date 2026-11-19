@@ -16,6 +16,7 @@ const pattern = (() => { try { return new RegExp(c.titlePattern ?? '', 'i'); } c
 const TERMS = `${folder}/0000-terms-of-reference`;
 const MEMBERS_FILE = `${folder}/members.json`;
 const fileComments = c.fileComments !== false; // false: no box for comments on a whole file (existing ones still show)
+const marginComments = c.marginComments !== false; // false: no margins beside paragraphs; their threads show under "Comments on this file"
 const BALLOT = '**Vote / Vote**'; // first line of the ballot comment on each proposal
 const BALLOT_BODY = `${BALLOT}\n\nCommittee members: react 👍 For or 👎 Against on this comment. Only votes from people on the member list count.\n\n`
   + 'Membres du comité : réagissez à ce commentaire avec 👍 Pour ou 👎 Contre. Seuls les votes des personnes inscrites sur la liste des membres comptent.';
@@ -463,7 +464,7 @@ function docView() {
   const lineOf = (t) => (pos(t).positionType === 'text' && current(pos(t)) ? pos(t).newLine : null);
   const onFile = threads.filter((t) => pos(t) && (pos(t).newPath === path || pos(t).oldPath === path));
   const placed = new Set();
-  const body = blocks(html[shown] || '', onFile, lineOf, placed, canComment);
+  const body = marginComments ? blocks(html[shown] || '', onFile, lineOf, placed, canComment) : html[shown] || '';
   const where = (p) => (p.positionType !== 'text' ? '' : `${current(p) ? L.line : L.earlier} ${p.newLine ?? p.oldLine}`);
   const show = (ts) => ts.map((t) => thread(t, canAct, where(pos(t) || {}))).join('');
   const unplaced = onFile.filter((t) => !placed.has(t)); // file comments, and margin comments whose line is gone
