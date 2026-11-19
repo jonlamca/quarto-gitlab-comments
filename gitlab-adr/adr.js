@@ -15,6 +15,7 @@ const folder = (c.folder || 'adr').replace(/^\/+|\/+$/g, '');
 const pattern = (() => { try { return new RegExp(c.titlePattern ?? '', 'i'); } catch { return null; } })(); // empty: every open MR
 const TERMS = `${folder}/0000-terms-of-reference`;
 const MEMBERS_FILE = `${folder}/members.json`;
+const fileComments = c.fileComments !== false; // false: no box for comments on a whole file (existing ones still show)
 const BALLOT = '**Vote / Vote**'; // first line of the ballot comment on each proposal
 const BALLOT_BODY = `${BALLOT}\n\nCommittee members: react 👍 For or 👎 Against on this comment. Only votes from people on the member list count.\n\n`
   + 'Membres du comité : réagissez à ce commentaire avec 👍 Pour ou 👎 Contre. Seuls les votes des personnes inscrites sur la liste des membres comptent.';
@@ -465,6 +466,7 @@ function docView() {
   const body = blocks(html[shown] || '', onFile, lineOf, placed, canComment);
   const where = (p) => (p.positionType !== 'text' ? '' : `${current(p) ? L.line : L.earlier} ${p.newLine ?? p.oldLine}`);
   const show = (ts) => ts.map((t) => thread(t, canAct, where(pos(t) || {}))).join('');
+  const unplaced = onFile.filter((t) => !placed.has(t)); // file comments, and margin comments whose line is gone
   const dec = a.mr && decision(mr, a);
   const off = mr ? uncounted(mr, a) : [];
   return `${back()}
@@ -478,7 +480,8 @@ function docView() {
     ${mr ? `<gcds-heading tag="h2">${L.vote}</gcds-heading><div class="adr-votes" id="adr-votes">${voteBar(mr, a)}</div>
       ${off.length ? `<p>${caption(`${L.notCounted} ${h(list(off))}`)}</p>` : ''}
       ${open && !isVoter(me) && !dec ? `<p>${caption(L.onlyMembers)}</p>` : ''}
-      <gcds-heading tag="h2">${L.fileComments}</gcds-heading>${show(onFile.filter((t) => !placed.has(t))) || muted(L.noComments)}${canComment ? form({ at: 'file' }) : ''}
+      ${fileComments || unplaced.length ? `<gcds-heading tag="h2">${L.fileComments}</gcds-heading>${show(unplaced) || muted(L.noComments)}${
+        canComment && fileComments ? form({ at: 'file' }) : ''}` : ''}
       <gcds-heading tag="h2">${L.meetingDiscussion}</gcds-heading>${show(threads.filter((t) => !pos(t))) || muted(L.noComments)}${canAct ? form() : ''}` : ''}`;
 }
 

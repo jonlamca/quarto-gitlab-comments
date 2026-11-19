@@ -33,6 +33,7 @@ The site is a few static files: `index.html`, `adr.js` and the deploy-time setti
      "clientId": "YOUR_APPLICATION_ID",
      "folder": "adr",
      "titlePattern": "^\\d{4}-\\d{2}-\\d{2} - Meeting",
+     "fileComments": true,
      "title": { "en": "StatCan Developer Program", "fr": "Programme des développeurs de StatCan" },
      "subtitle": { "en": "TIGER (technology, integration, governance, engineering review)", "fr": "TIGER (technologie, intégration, gouvernance, examen de l’ingénierie)" },
      "signature": {
@@ -49,6 +50,7 @@ The site is a few static files: `index.html`, `adr.js` and the deploy-time setti
    | `clientId` | The application ID from step 2. Required. |
    | `folder` | The folder on the default branch that holds accepted ADRs, subfolders included, for example `adr` or `tiger`. |
    | `titlePattern` | A regular expression for meeting merge request titles. The example matches `2026-11-20 - Meeting`; in JSON each backslash is doubled. Empty: every open merge request is a meeting. |
+   | `fileComments` | `false` removes the box for commenting on a proposal as a whole, leaving margin comments and meeting discussion. File comments made in GitLab, and margin comments whose line has changed, still show. Default: `true`. |
    | `title`, `subtitle` | The home page heading and the line under it. Each is one string, or an `en` and `fr` pair. |
    | `signature` | The department signature in the header, per language: image file, alt text and link. Leave it out to show the Government of Canada signature. |
 
@@ -117,7 +119,7 @@ The committee's terms of reference are ADR 0000, `0000-terms-of-reference-en.md`
   - The other proposals and files at the same meeting.
   - **Margin comments:** on wide screens each paragraph has a margin beside it, as in a word processor, with its comment threads as cards and a **Comment** button that appears on hover or keyboard focus. Commented paragraphs are highlighted. On narrow screens the margin sits below the paragraph.
   - **Vote:** 👍 For and 👎 Against. Each member gets one vote per proposal, so voting For removes an Against and the other way round. Hovering over a vote shows who voted. Reactions from anyone who isn't a voting member, including non-voting members, are shown as not counted. Voting stops once the chair records a decision.
-  - **Comments on this file:** threads about the proposal as a whole, plus margin comments that can't be placed beside a paragraph, such as those on a line that has since changed.
+  - **Comments on this file:** threads about the proposal as a whole, plus margin comments that can't be placed beside a paragraph, such as those on a line that has since changed. With `fileComments` set to `false` there's no box to start one, and the section only appears when it has threads to show.
   - **Meeting discussion:** the merge request's general discussion.
   - For an accepted decision: the votes and comments from the meeting that accepted it, read-only.
 - **Members (`#/members`):** the committee, and for the chair the editor described in [Committee members](#committee-members).

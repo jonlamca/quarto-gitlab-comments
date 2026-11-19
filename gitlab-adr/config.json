@@ -4,6 +4,7 @@
   "clientId": "YOUR_APPLICATION_ID",
   "folder": "adr",
   "titlePattern": "^\\d{4}-\\d{2}-\\d{2} - Meeting",
+  "fileComments": true,
   "title": {
     "en": "StatCan Developer Program",
     "fr": "Programme des développeurs de StatCan"
