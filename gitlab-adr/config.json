@@ -3,6 +3,7 @@
   "project": "your-group/adr",
   "clientId": "YOUR_APPLICATION_ID",
   "folder": "adr",
+  "titlePrefix": "[RFC]",
   "title": {
     "en": "StatCan Developer Program",
     "fr": "Programme des développeurs de StatCan"

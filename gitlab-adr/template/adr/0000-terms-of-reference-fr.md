@@ -15,15 +15,15 @@ Le comité examine les décisions d'architecture proposées pour [portée, par e
 
 ## Proposer une décision
 
-1. Reprenez le plan d'une décision existante et rédigez-la en anglais et en français : `adr/NNNN-nom-court-en.md` et `adr/NNNN-nom-court-fr.md`. Utilisez le prochain numéro libre.
-2. Placez les deux fichiers dans une nouvelle branche et ouvrez une demande de fusion vers la branche par défaut.
+1. Reprenez le plan d'une décision existante et rédigez-la en anglais et en français : `NNNN-nom-court-en.md` et `NNNN-nom-court-fr.md` dans le dossier des décisions. Utilisez le prochain numéro libre.
+2. Placez les deux fichiers dans une nouvelle branche et ouvrez une demande de fusion vers la branche par défaut. Commencez son titre par [RFC] (ou par le préfixe configuré sur le site des décisions), par exemple « [RFC] Adopter PostgreSQL ». Une demande de fusion peut regrouper plusieurs décisions liées et des fichiers d'appui; le comité les vote ensemble.
 3. Informez le comité, par exemple dans [canal ou réunion].
 
 Une proposition ne peut pas être acceptée tant que les deux versions linguistiques ne sont pas présentes.
 
 ## Examen et vote
 
-- **Discussion :** elle a lieu dans la demande de fusion, sur le site des décisions ou dans GitLab. La présidence peut consigner les commentaires faits par les membres lors d'une réunion.
+- **Discussion :** elle a lieu dans la demande de fusion, sur le site des décisions ou dans GitLab. Les membres peuvent commenter l'ensemble de la proposition, un fichier ou un paragraphe. La présidence peut consigner les commentaires faits par les membres lors d'une réunion.
 - **Vote :** chaque membre dispose d'un vote, Pour ou Contre, exprimé sur le site des décisions ou par une réaction 👍 ou 👎 sur la demande de fusion. Les votes sont visibles par toutes les personnes qui ont accès au projet.
 - **Période de vote :** [par exemple, 10 jours ouvrables après l'ouverture de la demande de fusion, ou jusqu'à la prochaine réunion].
 - **Quorum :** [par exemple, la majorité des membres a voté].
