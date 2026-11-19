@@ -166,6 +166,25 @@ Votes are GitLab reactions on a **ballot comment** that the site adds to each pr
 - **Footer:** the footer shows only the Canada wordmark, which the Federal Identity Program requires on Government of Canada sites. It has no links or text.
 - **Tested against:** the current gitlab.com API. The minimum self-managed GitLab version hasn't been checked.
 
+## Try it without GitLab
+
+`demo/` runs the site against a fake GitLab in the browser, with sample meetings, proposals, votes, comments and a member list. You're signed in as the chair, and everything resets when you reload. From this folder (`gitlab-adr/`):
+
+```bash
+sh demo/run.sh
+```
+
+Then open http://localhost:8000/. Give a port to use another, for example `sh demo/run.sh 8080`. It needs Python 3.
+
+The script copies the site into a temporary folder, adds `demo/mock.js` (the fake GitLab) and `demo/config.json` (the sample settings), and serves that; the site you deploy is never changed. Rerun it after editing the site. Places to look:
+
+- `#/adr/0005-pg-backups-en.md`: front matter and **Present as slides**.
+- `#/adr/0003-adopt-postgres-en.md`: margin comments and voting.
+- `#/chair`: recording decisions and closing a meeting.
+- `#/members`: the member list.
+
+Don't deploy anything from `demo/`.
+
 ## Try it locally
 
 Set `clientId` and `project` in `config.json`, register `http://localhost:8000/` as a redirect URI, then run this from this folder (`gitlab-adr/`):

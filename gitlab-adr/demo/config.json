@@ -1,0 +1,19 @@
+{
+  "gitlab": "https://gitlab.example.com",
+  "project": "demo/adr",
+  "clientId": "demo",
+  "branch": "main",
+  "folder": "adr",
+  "titlePattern": "^\\d{4}-\\d{2}-\\d{2} - Meeting",
+  "fileComments": true,
+  "marginComments": true,
+  "slides": true,
+  "title": {
+    "en": "StatCan Developer Program",
+    "fr": "Programme des développeurs de StatCan"
+  },
+  "subtitle": {
+    "en": "TIGER (technology, integration, governance, engineering review)",
+    "fr": "TIGER (technologie, intégration, gouvernance, examen de l’ingénierie)"
+  }
+}
