@@ -17,6 +17,8 @@ const TERMS = `${folder}/0000-terms-of-reference`;
 const MEMBERS_FILE = `${folder}/members.json`;
 const fileComments = c.fileComments !== false; // false: no box for comments on a whole file (existing ones still show)
 const marginComments = c.marginComments !== false; // false: no margins beside paragraphs; their threads show under "Comments on this file"
+const slidesOn = c.slides !== false; // false: no "Present as slides" button
+const META = ['status', 'date', 'decision-makers', 'consulted', 'informed']; // MADR front matter fields, shown in this order
 const BALLOT = '**Vote / Vote**'; // first line of the ballot comment on each proposal
 const BALLOT_BODY = `${BALLOT}\n\nCommittee members: react 👍 For or 👎 Against on this comment. Only votes from people on the member list count.\n\n`
   + 'Membres du comité : réagissez à ce commentaire avec 👍 Pour ou 👎 Contre. Seuls les votes des personnes inscrites sur la liste des membres comptent.';
@@ -49,6 +51,8 @@ const LABELS = {
     membersTitle: 'Committee members', membersIntro: 'Only voting members’ votes count, and the chair view lists the voting members who haven’t voted. Each person’s group is shown next to their name.',
     noListTitle: 'No member list yet', noList: 'Everyone with Reporter access or higher counts as a member until the chair saves a list on the Members page.',
     filter: 'Find by name or username', candidates: 'People with Reporter access or higher to the GitLab project. To add someone else, give them access in GitLab first.',
+    present: 'Present as slides', prev: 'Previous', next: 'Next', exit: 'Exit',
+    meta: { status: 'Status', date: 'Date', 'decision-makers': 'Decision-makers', consulted: 'Consulted', informed: 'Informed' },
     noAccessNote: 'no access', save: 'Save member list', peopleHint: 'Tick the members, then set whether each one votes and the group they represent.',
     voting: 'Voting', nonVoting: 'Non-voting', votingOf: 'Voting status for', group: 'Group represented', groupOf: 'Group represented by',
   },
@@ -78,6 +82,8 @@ const LABELS = {
     membersTitle: 'Membres du comité', membersIntro: "Seuls les votes des membres votants comptent, et la vue de la présidence indique les membres votants qui n'ont pas encore voté. Le groupe de chaque personne figure à côté de son nom.",
     noListTitle: 'Pas encore de liste des membres', noList: "Toute personne ayant le rôle Reporter ou un rôle supérieur compte comme membre jusqu'à ce que la présidence enregistre une liste dans la page Membres.",
     filter: "Chercher par nom ou nom d'utilisateur", candidates: "Personnes ayant le rôle Reporter ou un rôle supérieur dans le projet GitLab. Pour ajouter quelqu'un d'autre, donnez-lui d'abord accès dans GitLab.",
+    present: 'Présenter en diapositives', prev: 'Précédente', next: 'Suivante', exit: 'Quitter',
+    meta: { status: 'Statut', date: 'Date', 'decision-makers': 'Personnes décisionnaires', consulted: 'Personnes consultées', informed: 'Personnes informées' },
     noAccessNote: 'sans accès', save: 'Enregistrer la liste des membres', peopleHint: 'Cochez les membres, puis indiquez pour chaque personne si elle vote et le groupe qu\'elle représente.',
     voting: 'Avec droit de vote', nonVoting: 'Sans droit de vote', votingOf: 'Droit de vote de', group: 'Groupe représenté', groupOf: 'Groupe représenté par',
   },
@@ -177,7 +183,30 @@ async function api(method, path, body) {
 const mrApi = (iid) => `/projects/${encodeURIComponent(c.project)}/merge_requests/${iid}`;
 
 // GitLab renders (and sanitizes) the Markdown, so ADRs look as they do in GitLab. gitlab.com requires sign-in for this.
-const markdown = async (text) => fix((await api('POST', '/markdown', { text, gfm: true, project: c.project })).html, true);
+const markdown = async (text, dropTitle) => fix((await api('POST', '/markdown', { text, gfm: true, project: c.project })).html, dropTitle);
+
+// YAML front matter: a leading ---…--- block of key: value lines (quotes and # comments allowed; lists as [a, b] or indented
+// "- item" lines), as in the MADR template. Returns { meta, body, offset }; offset is the number of lines taken off the top,
+// so margin comments can still use the file's own line numbers.
+// ponytail: not a full YAML parser; nested maps and multi-line strings aren't supported.
+function frontMatter(text) {
+  const m = text.match(/^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/);
+  if (!m) return { meta: {}, body: text, offset: 0 };
+  const meta = {};
+  const val = (v) => v.replace(/\s+#.*$/, '').trim().replace(/^(['"])(.*)\1$/, '$2');
+  let key = null;
+  for (const line of m[1].split(/\r?\n/)) {
+    if (/^\s*(#|$)/.test(line)) continue;
+    const item = line.match(/^\s+-\s+(.*)$/);
+    if (item && key) { meta[key] = [...(Array.isArray(meta[key]) ? meta[key] : []), val(item[1])]; continue; }
+    const kv = line.match(/^([\w-]+)\s*:\s*(.*)$/);
+    if (!kv) continue;
+    key = kv[1];
+    const v = val(kv[2]);
+    meta[key] = /^\[.*\]$/.test(v) ? v.slice(1, -1).split(',').map(val).filter(Boolean) : v;
+  }
+  return { meta, body: text.slice(m[0].length), offset: m[0].split('\n').length - 1 };
+}
 
 // Old line number of new line n in a unified diff, or null if the merge request added it. Lines between hunks are
 // unchanged, shifted by the lines the hunks above added or removed.
@@ -298,7 +327,7 @@ async function load() {
   const rfc = (mr) => mr.targetBranch === rootRef && pattern.test(mr.title); // meetings merge into the record branch
   meetings = project.open.nodes.filter(rfc);
   byKey = {};
-  const entry = (path) => (byKey[keyOf(path)] ||= { key: keyOf(path), main: {}, prop: {}, text: {} });
+  const entry = (path) => (byKey[keyOf(path)] ||= { key: keyOf(path), main: {}, prop: {}, text: {}, fm: {} });
   for (const { path } of project.repository.tree?.blobs.nodes || []) if (isMd(path)) entry(path).main[langOf(path)] = path;
   for (const mr of meetings) for (const { path } of mr.diffStats || []) {
     if (isMd(path) && (entry(path).mr ||= mr) === mr) byKey[keyOf(path)].prop[langOf(path)] = path; // Limit: two meetings on one file, first wins
@@ -313,6 +342,7 @@ async function load() {
     ...meetings.map((mr) => blobsAt(mr.sourceBranch, docs.filter((a) => a.mr === mr).flatMap((a) => Object.values(a.prop))))]);
   for (const a of docs) for (const l of Object.keys(variants(a))) {
     a.text[l] = a.prop[l] ? branches[meetings.indexOf(a.mr)][a.prop[l]] : main[a.main[l]]; // none: removed
+    if (a.text[l] != null) a.fm[l] = frontMatter(a.text[l]);
   }
   try {
     members = JSON.parse(main[MEMBERS_FILE]).members.filter((u) => u.username).map((u) => ({ ...u, voting: u.voting !== false, group: u.group || '' }));
@@ -324,18 +354,29 @@ async function load() {
   const iids = [...meetings.map((mr) => mr.iid), ...(a && !a.mr && a.merged ? [a.merged.iid] : [])];
   details = Object.fromEntries(await Promise.all(iids.map(async (iid) => [iid, await detail(iid)])));
   if (a) {
-    const [en, fr, none] = await Promise.all(['en', 'fr', ''].map((l) => a.text[l] != null && markdown(a.text[l])));
+    const [en, fr, none] = await Promise.all(['en', 'fr', ''].map((l) => a.fm[l] && markdown(a.fm[l].body, !a.fm[l].meta.title)));
     doc = { a, mr: details[(a.mr || a.merged)?.iid], html: { en, fr, '': none } };
   }
 }
 
-const title = (a) => (a.text[lang] ?? a.text[other()] ?? a.text[''])?.match(/^#\s+(.+)$/m)?.[1].trim() || base(a.key);
+const fmOf = (a) => a.fm[lang] ?? a.fm[other()] ?? a.fm[''];
+const title = (a) => fmOf(a)?.meta.title || fmOf(a)?.body.match(/^#\s+(.+)$/m)?.[1].trim() || base(a.key);
 const num = (a) => base(a.key).match(/^\d+/)?.[0];
 const label = (a) => (num(a) ? `${num(a)} · ${title(a)}` : title(a));
 const docLink = (a) => (removed(a) ? `${h(label(a))} (${L.removed})` : `<gcds-link href="${h(href(pathFor(a)))}">${h(label(a))}</gcds-link>`);
 const intro = () => `<gcds-heading tag="h1" margin-bottom="200">${h(site())}</gcds-heading>
   ${c.subtitle ? `<p class="adr-subtitle">${h(tr(c.subtitle))}</p>` : ''}<gcds-text>${L.intro}</gcds-text>`;
 const back = () => `<p><gcds-link href="#/">← ${L.all}</gcds-link></p>`;
+const metaList = (meta = {}) => {
+  const keys = Object.keys(meta).filter((k) => k !== 'title' && [].concat(meta[k]).join('') !== '')
+    .sort((x, y) => (META.indexOf(x) + 1 || 99) - (META.indexOf(y) + 1 || 99));
+  return keys.length ? `<dl class="adr-meta">${keys.map((k) => `<dt>${h(L.meta[k] || k)}</dt><dd>${h([].concat(meta[k]).join(', '))}</dd>`).join('')}</dl>` : '';
+};
+const statusLine = (a, mr, link = true) => {
+  const dec = a.mr && decision(mr, a);
+  return `${!a.mr ? L.statusAccepted : dec ? `<strong>${dec === 'Accepted' ? L.willMerge : L.willGo}</strong>` : L.statusProposed}${mr
+    ? ` · ${L.meeting} ${link ? `<gcds-link href="${h(mr.webUrl)}">${h(mr.title)}</gcds-link>` : h(mr.title)}` : ''}`;
+};
 const decLabel = (dec) => (dec === 'Accepted' ? L.decAccepted : dec === 'Rejected' ? L.decRejected : '');
 const missingLangs = (a) => { // only for files named -en.md / -fr.md
   const langs = Object.keys(variants(a));
@@ -404,13 +445,14 @@ const form = ({ thread = '', at = '' } = {}) => {
 // Margin comments. GitLab marks each rendered block with data-sourcepos="startLine:col-endLine:col". Each paragraph gets a
 // margin beside it (below it on narrow screens) with the threads on its lines in the current version, and a button that
 // starts a thread on its first line.
-function blocks(html, threads, lineOf, placed, canComment) {
+function blocks(html, threads, lineOf, placed, canComment, offset = 0) { // offset: front matter lines taken off before rendering
   const t = document.createElement('template');
   t.innerHTML = html;
   for (const b of [...t.content.children]) {
     const m = (b.dataset.sourcepos || b.querySelector('[data-sourcepos]')?.dataset.sourcepos || '').match(/^(\d+):\d+-(\d+):/);
     if (!m || /^H\d$/.test(b.tagName)) continue; // headings: their threads go under "Comments on this file"
-    const here = threads.filter((x) => lineOf(x) >= +m[1] && lineOf(x) <= +m[2]);
+    const [from, to] = [+m[1] + offset, +m[2] + offset]; // the file's own line numbers
+    const here = threads.filter((x) => lineOf(x) >= from && lineOf(x) <= to);
     here.forEach((x) => placed.add(x));
     if (!here.length && !canComment) continue;
     const w = document.createElement('div');
@@ -418,7 +460,7 @@ function blocks(html, threads, lineOf, placed, canComment) {
     b.replaceWith(w);
     w.append(b);
     w.insertAdjacentHTML('beforeend', `<div class="adr-margin">${here.map((x) => thread(x, canComment)).join('')}${canComment
-      ? `<gcds-button class="adr-c" button-role="secondary" size="small" data-para="${m[1]}">${L.comment}<span class="adr-sr">${L.onPara}</span></gcds-button>` : ''}</div>`);
+      ? `<gcds-button class="adr-c" button-role="secondary" size="small" data-para="${from}">${L.comment}<span class="adr-sr">${L.onPara}</span></gcds-button>` : ''}</div>`);
   }
   return t.innerHTML;
 }
@@ -460,7 +502,7 @@ function docView() {
   const lineOf = (t) => (pos(t).positionType === 'text' && current(pos(t)) ? pos(t).newLine : null);
   const onFile = threads.filter((t) => pos(t) && (pos(t).newPath === path || pos(t).oldPath === path));
   const placed = new Set();
-  const body = marginComments ? blocks(html[shown] || '', onFile, lineOf, placed, canComment) : html[shown] || '';
+  const body = marginComments ? blocks(html[shown] || '', onFile, lineOf, placed, canComment, a.fm[shown]?.offset) : html[shown] || '';
   const where = (p) => (p.positionType !== 'text' ? '' : `${current(p) ? L.line : L.earlier} ${p.newLine ?? p.oldLine}`);
   const show = (ts) => ts.map((t) => thread(t, canAct, where(pos(t) || {}))).join('');
   const unplaced = onFile.filter((t) => !placed.has(t)); // file comments, and margin comments whose line is gone
@@ -468,8 +510,9 @@ function docView() {
   const off = mr ? uncounted(mr, a) : [];
   return `${back()}
     <gcds-heading tag="h1">${h(label(a))}</gcds-heading>
-    <gcds-text text-role="secondary">${!a.mr ? L.statusAccepted : dec ? `<strong>${dec === 'Accepted' ? L.willMerge : L.willGo}</strong>` : L.statusProposed}${mr
-      ? ` · ${L.meeting} <gcds-link href="${h(mr.webUrl)}">${h(mr.title)}</gcds-link>` : ''}</gcds-text>
+    <gcds-text text-role="secondary">${statusLine(a, mr)}</gcds-text>
+    ${slidesOn && html[shown] ? `<p><gcds-button button-role="secondary" size="small" data-action="slides">${L.present}</gcds-button></p>` : ''}
+    ${metaList(a.fm[shown]?.meta)}
     ${a.mr && proposalsOf(a.mr).length > 1 ? `${caption(L.others)}${files(a.mr, a)}` : ''}
     ${shown === other() ? `<gcds-notice type="warning" notice-title-tag="h2" notice-title="${L.missingTitle}"
       style="display: block; margin-bottom: var(--gcds-spacing-300)"><gcds-text>${L.missing}</gcds-text></gcds-notice>` : ''}
@@ -656,10 +699,79 @@ async function closeMeeting(iid) {
   await gql(NOTE, { id: mr.id, b: summary });
 }
 
+// Slides: a cover (site, proposal, status, front matter), then a slide at each # or ## heading of the file as rendered in
+// the language shown (### and deeper stay on their slide). Full screen where the browser allows, a full-window overlay
+// otherwise. Keys: ← → PageUp PageDown Space Home End, Esc to leave.
+function present(from) {
+  const { a, mr, html } = doc;
+  const shown = shownLang();
+  const t = document.createElement('template');
+  t.innerHTML = html[shown] || '';
+  const decks = [];
+  for (const n of [...t.content.childNodes]) {
+    if (!decks.length || (/^H[12]$/.test(n.tagName) && decks.at(-1).children.length)) decks.push(document.createElement('div'));
+    decks.at(-1).append(n);
+  }
+  const slides = [`<div class="adr-cover"><p class="adr-cover-site">${h(site())}${c.subtitle ? ` — ${h(tr(c.subtitle))}` : ''}</p>
+    <h1>${h(label(a))}</h1><p>${statusLine(a, mr, false)}</p>${metaList(a.fm[shown]?.meta)}</div>`, ...decks.map((d) => d.innerHTML)];
+  const o = document.createElement('div');
+  o.className = 'adr-slides';
+  o.setAttribute('role', 'dialog');
+  o.setAttribute('aria-modal', 'true');
+  o.setAttribute('aria-label', label(a));
+  o.lang = shown || lang;
+  o.innerHTML = `<div class="adr-slide" tabindex="-1"><div class="adr-md adr-slide-in"></div></div><div class="adr-slide-bar">
+    <gcds-button size="small" button-role="secondary" data-go="-1">${L.prev}</gcds-button><span class="adr-count" aria-live="polite"></span>
+    <gcds-button size="small" button-role="secondary" data-go="1">${L.next}</gcds-button><gcds-button size="small" data-go="exit">${L.exit}</gcds-button></div>`;
+  const slide = o.querySelector('.adr-slide');
+  let i = 0;
+  const show = (n) => {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    o.querySelector('.adr-slide-in').innerHTML = slides[i];
+    slide.scrollTop = 0;
+    o.querySelector('.adr-count').textContent = `${i + 1} / ${slides.length}`;
+    o.querySelector('[data-go="-1"]').toggleAttribute('disabled', i === 0);
+    o.querySelector('[data-go="1"]').toggleAttribute('disabled', i === slides.length - 1);
+  };
+  const behind = [...document.body.children]; // the page stays out of reach while presenting
+  const close = () => {
+    document.removeEventListener('keydown', key);
+    o.remove();
+    behind.forEach((x) => { x.inert = false; });
+    document.body.style.overflow = '';
+    if (document.fullscreenElement) document.exitFullscreen();
+    from.focus();
+  };
+  const key = (e) => {
+    const k = e.key;
+    if (k === ' ' && e.composedPath().some((x) => x.tagName === 'BUTTON')) return; // Space on a button presses it
+    if (k === 'Escape') close();
+    else if (['ArrowRight', 'PageDown', ' '].includes(k)) show(i + 1);
+    else if (['ArrowLeft', 'PageUp'].includes(k)) show(i - 1);
+    else if (k === 'Home') show(0);
+    else if (k === 'End') show(slides.length - 1);
+    else return;
+    e.preventDefault();
+  };
+  o.addEventListener('click', (e) => {
+    const go = e.target.closest('[data-go]')?.dataset.go;
+    if (go === 'exit') close(); else if (go) show(i + +go);
+  });
+  o.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && o.isConnected) close(); }); // Esc in full screen
+  document.addEventListener('keydown', key);
+  behind.forEach((x) => { x.inert = true; });
+  document.body.append(o);
+  document.body.style.overflow = 'hidden';
+  show(0);
+  slide.focus();
+  o.requestFullscreen?.().catch(() => { /* not allowed here (e.g. iPhone): the overlay already fills the window */ });
+}
+
 el.addEventListener('click', async (e) => {
   const b = e.target.closest('gcds-button'); // disabled gcds-buttons swallow the click
   if (!b) return;
   if (b.dataset.action === 'signin') return signIn();
+  if (b.dataset.action === 'slides') return present(b);
   const open = async (html) => { // swap the button for a comment box and move focus into it (autofocus is blocked after a click)
     b.insertAdjacentHTML('afterend', html);
     const t = b.nextElementSibling.querySelector('gcds-textarea');

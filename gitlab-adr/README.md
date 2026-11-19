@@ -36,6 +36,7 @@ The site is a few static files: `index.html`, `adr.js` and the deploy-time setti
      "titlePattern": "^\\d{4}-\\d{2}-\\d{2} - Meeting",
      "fileComments": true,
      "marginComments": true,
+     "slides": true,
      "title": { "en": "StatCan Developer Program", "fr": "Programme des développeurs de StatCan" },
      "subtitle": { "en": "TIGER (technology, integration, governance, engineering review)", "fr": "TIGER (technologie, intégration, gouvernance, examen de l’ingénierie)" },
      "signature": {
@@ -55,6 +56,7 @@ The site is a few static files: `index.html`, `adr.js` and the deploy-time setti
    | `titlePattern` | A regular expression for meeting merge request titles. The example matches `2026-11-20 - Meeting`; in JSON each backslash is doubled. Empty: every open merge request is a meeting. |
    | `fileComments` | `false` removes the box for commenting on a proposal as a whole, leaving margin comments and meeting discussion. File comments made in GitLab, and margin comments whose line has changed, still show. Default: `true`. |
    | `marginComments` | `false` removes the margins beside paragraphs and their **Comment** buttons. Margin comments that already exist (for example, made in GitLab) show under "Comments on this file" with their line number. Default: `true`. With both set to `false`, members comment only in the meeting discussion. |
+   | `slides` | `false` removes the **Present as slides** button from proposal pages. Default: `true`. |
    | `title`, `subtitle` | The home page heading and the line under it. Each is one string, or an `en` and `fr` pair. |
    | `signature` | The department signature in the header, per language: image file, alt text and link. Leave it out to show the Government of Canada signature. |
 
@@ -71,7 +73,20 @@ adr/0007-adopt-postgres-en.md
 adr/0007-adopt-postgres-fr.md
 ```
 
-The first `# ` heading is the decision's title. A suggested outline:
+A file can start with YAML front matter, as in the [MADR](https://adr.github.io/madr/) template. The site shows its fields under the title, with English and French labels for the usual ones, and on the cover slide:
+
+```yaml
+---
+status: proposed          # the author's own status; the site's status line comes from GitLab
+date: 2026-11-20
+decision-makers: [Alex Tremblay, Priya Shah]
+consulted:
+  - Marco Rossi
+informed: Platform teams
+---
+```
+
+The decision's title is the front matter's `title` if there is one, otherwise the first `# ` heading, otherwise the file name. A suggested outline:
 
 ```markdown
 # Adopt PostgreSQL
@@ -125,6 +140,7 @@ The committee's terms of reference are ADR 0000, `0000-terms-of-reference-en.md`
   - **Vote:** 👍 For and 👎 Against. Each member gets one vote per proposal, so voting For removes an Against and the other way round. Hovering over a vote shows who voted. Reactions from anyone who isn't a voting member, including non-voting members, are shown as not counted. Voting stops once the chair records a decision.
   - **Comments on this file:** threads about the proposal as a whole, plus margin comments that can't be placed beside a paragraph, such as those on a line that has since changed. With `fileComments` set to `false` there's no box to start one, and the section only appears when it has threads to show.
   - **Meeting discussion:** the merge request's general discussion.
+  - **Present as slides:** opens the file full screen as slides: a cover slide with the title, status and front matter, then a slide for each `#` or `##` heading, with `###` and below staying on their slide. Use the buttons or ← → (also Page Up/Down, Space, Home, End); Esc leaves. Margin comments aren't shown on slides. `slides` in `config.json` turns this off.
   - For an accepted decision: the votes and comments from the meeting that accepted it, read-only.
 - **Members (`#/members`):** the committee, and for the chair the editor described in [Committee members](#committee-members).
 - **Chair view (`#/chair`):** for each open meeting, every proposal with For and Against (names and groups), which voting members haven't voted yet, missing translations and the decision so far, plus GitLab's merge status. People with Maintainer access get:
@@ -142,6 +158,8 @@ Votes are GitLab reactions on a **ballot comment** that the site adds to each pr
 - **Ballots:** if two people cast the very first vote on a proposal at the same moment, GitLab can end up with two ballot comments; the site counts the first one. Decisions count only from people with Maintainer access.
 - **Closing a meeting:** files that aren't Markdown, such as images, are merged with the meeting, whichever proposal they belong to. Closing waits up to 20 seconds for GitLab to process the commit that takes proposals out; if GitLab is slower, the merge fails and the chair clicks **Close meeting** again. Meetings from forks aren't supported, since the site commits to the meeting's branch.
 - **Comments belong to one file:** comments on the English version of a decision don't show on the French page, and the other way round. Meeting discussion shows on every page.
+- **Front matter:** only simple YAML is read: `key: value`, quoted values, comments, and lists. Nested fields and multi-line text aren't.
+- **Slides:** a slide with more than fits on the screen scrolls; text isn't shrunk to fit.
 - **Margin comments:** a comment is attached to the paragraph's first line. A long thread pushes the next paragraph down rather than overlapping it. Comments on an accepted decision are placed by line as of the merge, so they can land on the wrong paragraph if the file was changed later without a proposal. Margin comments rely on GitLab marking source lines in its rendered Markdown; without that, file comments still work. Comments on renamed files haven't been tested.
 - **Images:** images in a proposal may not show until it's merged, because GitLab links them to the project's default branch.
 - **Translation review:** the French interface text, the French title and subtitle in `config.json`, and the French terms of reference template use Canadian typography. Have a fluent speaker review them.

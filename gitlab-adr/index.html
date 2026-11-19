@@ -75,6 +75,25 @@
     /* Footer: the Canada wordmark only, as the Federal Identity Program requires, with no links or text. */
     .adr-footer { background: var(--gcds-footer-sub-background); margin-top: var(--gcds-spacing-800); padding: var(--gcds-spacing-400) 0; }
     .adr-footer gcds-signature { margin-left: auto; width: var(--gcds-footer-sub-signature-width); max-height: var(--gcds-footer-sub-signature-max-height); }
+    /* Front matter fields (status, date, decision-makers...) */
+    .adr-meta { display: grid; grid-template-columns: max-content 1fr; gap: var(--gcds-spacing-50) var(--gcds-spacing-300);
+      font: var(--gcds-font-text-small); margin: 0 0 var(--gcds-spacing-400); }
+    .adr-meta dt { font-weight: 700; }
+    .adr-meta dd { margin: 0; }
+    /* Slides: full window, text scaled to the screen, controls along the bottom. */
+    .adr-slides { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; background: var(--gcds-bg-white); }
+    .adr-slide:focus { outline: none; } /* focused only so the keys and scrolling work; it isn't a control */
+    .adr-slide { flex: 1; overflow: auto; padding: clamp(var(--gcds-spacing-300), 5vw, var(--gcds-spacing-800)); font-size: clamp(1.125rem, 2.2vw, 2rem); }
+    /* ponytail: a slide too long for the screen scrolls rather than shrinking to fit. */
+    .adr-slide-in { max-width: 42em; margin: 0 auto; }
+    .adr-slide-in :is(h1, h2) { font: 700 clamp(1.75rem, 4.2vw, 3.5rem)/1.2 var(--gcds-font-families-heading, Lato, sans-serif); margin: 0 0 var(--gcds-spacing-400); }
+    .adr-slide-in h3 { font: 700 1.2em/1.25 var(--gcds-font-families-heading, Lato, sans-serif); margin: var(--gcds-spacing-300) 0 var(--gcds-spacing-200); }
+    .adr-slide-in .adr-meta { font-size: 0.8em; }
+    .adr-cover { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; }
+    .adr-cover-site { color: var(--gcds-text-secondary); font-size: 0.8em; }
+    .adr-slide-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--gcds-spacing-200);
+      padding: var(--gcds-spacing-200); border-top: var(--gcds-border-width-sm) solid var(--gcds-border-default); }
+    .adr-count { font: var(--gcds-font-text-small); min-width: 4em; text-align: center; }
     @media (max-width: 48em) {
       body { font: var(--gcds-font-text-mobile); }
       .adr-md :is(h2, h3, h4), .adr-subtitle { font: var(--gcds-font-h3-mobile); }
