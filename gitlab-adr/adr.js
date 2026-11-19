@@ -15,7 +15,6 @@ const folder = (c.folder || 'adr').replace(/^\/+|\/+$/g, '');
 const pattern = (() => { try { return new RegExp(c.titlePattern ?? '', 'i'); } catch { return null; } })(); // empty: every open MR
 const TERMS = `${folder}/0000-terms-of-reference`;
 const MEMBERS_FILE = `${folder}/members.json`;
-const ROLES = ['chair', 'vice-chair', 'member', 'observer']; // labels only: everyone on the list votes
 const BALLOT = '**Vote / Vote**'; // first line of the ballot comment on each proposal
 const BALLOT_BODY = `${BALLOT}\n\nCommittee members: react 👍 For or 👎 Against on this comment. Only votes from people on the member list count.\n\n`
   + 'Membres du comité : réagissez à ce commentaire avec 👍 Pour ou 👎 Contre. Seuls les votes des personnes inscrites sur la liste des membres comptent.';
@@ -37,7 +36,7 @@ const LABELS = {
     missingTitle: 'Translation missing', missing: 'This file is not available in English yet. It is shown in French.',
     others: 'At this meeting', supporting: 'Supporting files:', removed: 'removed', comment: 'Comment', onPara: ' on this paragraph',
     fileComments: 'Comments on this file', meetingDiscussion: 'Meeting discussion', line: 'Line', earlier: 'On an earlier version, line',
-    vote: 'Vote', notCounted: 'Not counted (not on the member list):', onlyMembers: 'Only committee members can vote.',
+    vote: 'Vote', notCounted: 'Not counted (not a voting member):', onlyMembers: 'Only voting members of the committee can vote.',
     noComments: 'No comments yet.', reply: 'Reply', replyAs: 'Reply as', commentAs: 'Comment as', yourReply: 'Your reply',
     yourComment: 'Your comment', onBehalf: 'On behalf of', myself: 'Myself', onBehalfHint: 'Chair only: record a comment a member made at a meeting.',
     proposal: 'Proposal', notVoted: 'Not yet voted', translations: 'Missing translation', mergeStatus: 'Merge status:',
@@ -45,11 +44,11 @@ const LABELS = {
     reject: 'Reject', closeMeeting: 'Close meeting', closeHint: 'Merges the accepted proposals and takes the others out of this merge request.',
     confirmClose: 'Close this meeting? The accepted proposals are merged; the others are taken out of the merge request.', acceptedList: 'Accepted:', takenOut: 'Taken out:',
     changed: 'New commits were pushed after this page loaded. Check the proposals and votes, then try again.',
-    membersTitle: 'Committee members', membersIntro: 'Only these people’s votes count, and the chair view lists the ones who haven’t voted.',
+    membersTitle: 'Committee members', membersIntro: 'Only voting members’ votes count, and the chair view lists the voting members who haven’t voted. Each person’s group is shown next to their name.',
     noListTitle: 'No member list yet', noList: 'Everyone with Reporter access or higher counts as a member until the chair saves a list on the Members page.',
     filter: 'Find by name or username', candidates: 'People with Reporter access or higher to the GitLab project. To add someone else, give them access in GitLab first.',
-    noAccessNote: 'no access', save: 'Save member list', roleFor: 'Role for',
-    roles: { chair: 'Chair', 'vice-chair': 'Vice-chair', member: 'Member', observer: 'Observer' },
+    noAccessNote: 'no access', save: 'Save member list', peopleHint: 'Tick the members, then set whether each one votes and the group they represent.',
+    voting: 'Voting', nonVoting: 'Non-voting', votingOf: 'Voting status for', group: 'Group represented', groupOf: 'Group represented by',
   },
   fr: {
     title: "Décisions d'architecture", terms: 'Cadre de référence', members: 'Membres', noConfig: 'Indiquez project et clientId dans config.json.',
@@ -64,8 +63,8 @@ const LABELS = {
     missingTitle: 'Traduction manquante', missing: "Ce fichier n'est pas encore disponible en français. Il est affiché en anglais.",
     others: 'À cette réunion', supporting: "Fichiers d'appui :", removed: 'supprimé', comment: 'Commenter', onPara: ' ce paragraphe',
     fileComments: 'Commentaires sur ce fichier', meetingDiscussion: 'Discussion de la réunion', line: 'Ligne',
-    earlier: 'Sur une version antérieure, ligne', vote: 'Vote', notCounted: 'Non comptés (absents de la liste des membres) :',
-    onlyMembers: 'Seuls les membres du comité peuvent voter.', noComments: 'Aucun commentaire pour le moment.', reply: 'Répondre',
+    earlier: 'Sur une version antérieure, ligne', vote: 'Vote', notCounted: 'Non comptés (pas membres votants) :',
+    onlyMembers: 'Seuls les membres votants du comité peuvent voter.', noComments: 'Aucun commentaire pour le moment.', reply: 'Répondre',
     replyAs: 'Répondre en tant que', commentAs: 'Commenter en tant que', yourReply: 'Votre réponse', yourComment: 'Votre commentaire',
     onBehalf: 'Au nom de', myself: 'Moi-même', onBehalfHint: "Présidence seulement : consigner un commentaire fait par un membre lors d'une réunion.",
     proposal: 'Proposition', notVoted: "N'ont pas encore voté", translations: 'Traduction manquante', mergeStatus: 'État de la fusion\u00a0:',
@@ -74,11 +73,11 @@ const LABELS = {
     closeHint: 'Fusionne les propositions acceptées et retire les autres de cette demande de fusion.',
     confirmClose: 'Clôturer cette réunion? Les propositions acceptées seront fusionnées; les autres seront retirées de la demande de fusion.',
     acceptedList: 'Acceptées\u00a0:', takenOut: 'Retirées\u00a0:', changed: 'De nouveaux commits ont été poussés après le chargement de cette page. Vérifiez les propositions et les votes, puis réessayez.',
-    membersTitle: 'Membres du comité', membersIntro: "Seuls les votes de ces personnes comptent, et la vue de la présidence indique celles qui n'ont pas encore voté.",
+    membersTitle: 'Membres du comité', membersIntro: "Seuls les votes des membres votants comptent, et la vue de la présidence indique les membres votants qui n'ont pas encore voté. Le groupe de chaque personne figure à côté de son nom.",
     noListTitle: 'Pas encore de liste des membres', noList: "Toute personne ayant le rôle Reporter ou un rôle supérieur compte comme membre jusqu'à ce que la présidence enregistre une liste dans la page Membres.",
     filter: "Chercher par nom ou nom d'utilisateur", candidates: "Personnes ayant le rôle Reporter ou un rôle supérieur dans le projet GitLab. Pour ajouter quelqu'un d'autre, donnez-lui d'abord accès dans GitLab.",
-    noAccessNote: 'sans accès', save: 'Enregistrer la liste des membres', roleFor: 'Rôle de',
-    roles: { chair: 'Présidence', 'vice-chair': 'Vice-présidence', member: 'Membre', observer: 'Personne observatrice' },
+    noAccessNote: 'sans accès', save: 'Enregistrer la liste des membres', peopleHint: 'Cochez les membres, puis indiquez pour chaque personne si elle vote et le groupe qu\'elle représente.',
+    voting: 'Avec droit de vote', nonVoting: 'Sans droit de vote', votingOf: 'Droit de vote de', group: 'Groupe représenté', groupOf: 'Groupe représenté par',
   },
 };
 const stored = (() => { try { return localStorage.getItem('adr:lang'); } catch { return null; } })();
@@ -270,16 +269,16 @@ const ballotPath = (a) => a.prop.en ?? a.prop.fr ?? a.prop[''] ?? a.main.en ?? a
 const isBallot = (t) => t.notes.nodes[0]?.body?.startsWith(BALLOT);
 const ballot = (mr, a) => mr?.discussions.nodes.find((t) => isBallot(t) && t.notes.nodes[0].position?.newPath === ballotPath(a)); // first, if two were started at once
 const reactors = (x, n) => (x?.awardEmoji.nodes || []).filter((r) => r.name === n && r.user).map((r) => r.user);
-const isMember = (u) => members.some((m) => m.username === u.username);
-const roleOf = (u) => members.find((m) => m.username === u.username)?.role;
-const named = (users) => users.map((u) => (roleOf(u) && roleOf(u) !== 'member' ? `${u.name} (${L.roles[roleOf(u)]})` : u.name)).join(', ');
+const memberOf = (u) => members.find((m) => m.username === u.username);
+const isVoter = (u) => !!memberOf(u)?.voting;
+const named = (users) => users.map((u) => (memberOf(u)?.group ? `${u.name} (${memberOf(u).group})` : u.name)).join(', ');
 const decisionNote = (mr, a) => [...(ballot(mr, a)?.notes.nodes || [])].reverse()
   .find((x) => maintainers.has(x.author?.username) && /^\*\*(Accepted|Rejected) \//.test(x.body));
 const decision = (mr, a) => decisionNote(mr, a)?.body.match(/^\*\*(\w+)/)[1];
 const frozen = (mr, a) => { try { return JSON.parse(decisionNote(mr, a).body.match(/<!-- tally (.+?) -->/)[1]); } catch { return null; } };
-const live = (mr, a, n) => reactors(ballot(mr, a)?.notes.nodes[0], n).filter(isMember);
+const live = (mr, a, n) => reactors(ballot(mr, a)?.notes.nodes[0], n).filter(isVoter);
 const votes = (mr, a, n) => frozen(mr, a)?.[n] ?? live(mr, a, n);
-const uncounted = (mr, a) => (frozen(mr, a) ? [] : ['thumbsup', 'thumbsdown'].flatMap((n) => reactors(ballot(mr, a)?.notes.nodes[0], n).filter((u) => !isMember(u))));
+const uncounted = (mr, a) => (frozen(mr, a) ? [] : ['thumbsup', 'thumbsdown'].flatMap((n) => reactors(ballot(mr, a)?.notes.nodes[0], n).filter((u) => !isVoter(u))));
 const mine = (x, n) => reactors(x, n).some((u) => u.username === me.username);
 
 async function load() {
@@ -314,9 +313,9 @@ async function load() {
     a.text[l] = a.prop[l] ? branches[meetings.indexOf(a.mr)][a.prop[l]] : main[a.main[l]]; // none: removed
   }
   try {
-    members = JSON.parse(main[MEMBERS_FILE]).members.filter((u) => u.username).map((u) => ({ ...u, role: ROLES.includes(u.role) ? u.role : 'member' }));
+    members = JSON.parse(main[MEMBERS_FILE]).members.filter((u) => u.username).map((u) => ({ ...u, voting: u.voting !== false, group: u.group || '' }));
     hasList = true;
-  } catch { members = people.map((u) => ({ ...u, role: 'member' })); hasList = false; }
+  } catch { members = people.map((u) => ({ ...u, voting: true, group: '' })); hasList = false; }
 
   // Votes, comments and decisions: one query per open meeting (usually one or two), plus the meeting that accepted the file shown.
   const a = byKey[keyOf(route())];
@@ -379,7 +378,7 @@ function listView() {
 const voteBar = (mr, a) => ['thumbsup', 'thumbsdown'].map((n) => {
   const users = votes(mr, a, n);
   const on = mine(ballot(mr, a)?.notes.nodes[0], n);
-  const can = mr.state === 'opened' && mr.userPermissions.createNote && isMember(me) && !decision(mr, a) && !!a.prop[langOf(ballotPath(a))];
+  const can = mr.state === 'opened' && mr.userPermissions.createNote && isVoter(me) && !decision(mr, a) && !!a.prop[langOf(ballotPath(a))];
   return `<gcds-button size="small" button-role="${on ? 'primary' : 'secondary'}" data-vote="${n}" aria-pressed="${on}"
     title="${h(hover(users))}" ${can ? '' : 'disabled'}>${n === 'thumbsup' ? `👍 ${L.for}` : `👎 ${L.against}`} ${users.length}</gcds-button>`;
 }).join('');
@@ -478,7 +477,7 @@ function docView() {
     <div class="adr-md${body.includes('adr-margin') ? ' adr-with-margin' : ''}" lang="${shown || lang}">${body}</div>
     ${mr ? `<gcds-heading tag="h2">${L.vote}</gcds-heading><div class="adr-votes" id="adr-votes">${voteBar(mr, a)}</div>
       ${off.length ? `<p>${caption(`${L.notCounted} ${h(list(off))}`)}</p>` : ''}
-      ${open && !isMember(me) && !dec ? `<p>${caption(L.onlyMembers)}</p>` : ''}
+      ${open && !isVoter(me) && !dec ? `<p>${caption(L.onlyMembers)}</p>` : ''}
       <gcds-heading tag="h2">${L.fileComments}</gcds-heading>${show(onFile.filter((t) => !placed.has(t))) || muted(L.noComments)}${canComment ? form({ at: 'file' }) : ''}
       <gcds-heading tag="h2">${L.meetingDiscussion}</gcds-heading>${show(threads.filter((t) => !pos(t))) || muted(L.noComments)}${canAct ? form() : ''}` : ''}`;
 }
@@ -496,7 +495,7 @@ function chairView() {
       const btn = (v, text, role) => `<gcds-button size="small" button-role="${role}" data-decide="${v}" data-iid="${h(mr.iid)}" data-key="${h(a.key)}"
         ${v === 'Accepted' && missing.length ? `disabled title="${L.needsBoth}"` : ''}>${text}</gcds-button>`;
       return `<tr><th scope="row">${docLink(a)}</th><td>${cell(yes)}</td><td>${cell(no)}</td>
-        <td>${decision(m, a) ? '—' : h(named(members.filter((u) => !voted.has(u.username)))) || '—'}${off.length ? `<br>${L.notCounted} ${h(list(off))}` : ''}</td>
+        <td>${decision(m, a) ? '—' : h(named(members.filter((u) => u.voting && !voted.has(u.username)))) || '—'}${off.length ? `<br>${L.notCounted} ${h(list(off))}` : ''}</td>
         <td>${missing.map((l) => l.toUpperCase()).join(', ') || '—'}</td>
         <td>${decLabel(decision(m, a)) || '—'}</td>
         <td>${mr.userPermissions.canMerge ? `${btn('Accepted', L.accept, 'primary')} ${btn('Rejected', L.reject, 'secondary')}` : '—'}</td></tr>`;
@@ -515,23 +514,27 @@ function chairView() {
     ${hasList ? '' : notice(L.noListTitle, L.noList)}${meetings.map(meeting).join('') || muted(L.none)}`;
 }
 
-// The member list is picked from the project's people, so nobody types usernames; each person also gets a role, which is
-// shown next to their name and has no effect on voting. Saving commits members.json.
+// The member list is picked from the project's people, so nobody types usernames. Each member is voting or non-voting and
+// represents a group (suggested from the groups already listed, to keep the names consistent). Saving commits members.json.
 function membersView() {
   const listed = new Set(hasList ? members.map((u) => u.username) : []);
-  const roles = (u) => `<select class="adr-role" aria-label="${h(`${L.roleFor} ${u.name}`)}">${ROLES.map((r) => `<option value="${r}"
-    ${(roleOf(u) || 'member') === r ? 'selected' : ''}>${L.roles[r]}</option>`).join('')}</select>`;
+  const groups = [...new Set(members.map((u) => u.group).filter(Boolean))].sort();
+  const fields = (u) => `<span class="adr-fields"><select class="adr-voting" aria-label="${h(`${L.votingOf} ${u.name}`)}">
+      <option value="yes">${L.voting}</option><option value="no" ${memberOf(u)?.voting === false ? 'selected' : ''}>${L.nonVoting}</option></select>
+    <input class="adr-group" list="adr-groups" value="${h(memberOf(u)?.group)}" placeholder="${L.group}" aria-label="${h(`${L.groupOf} ${u.name}`)}"></span>`;
   const candidates = [...people, ...members.filter((u) => !people.some((p) => p.username === u.username))]
     .sort((x, y) => x.name.localeCompare(y.name));
   const noAccess = (u) => !people.some((p) => p.username === u.username);
   return `${back()}<gcds-heading tag="h1">${L.membersTitle}</gcds-heading><gcds-text>${L.membersIntro}</gcds-text>
     ${hasList ? '' : notice(L.noListTitle, L.noList)}
     ${project.userPermissions.pushCode ? `<gcds-input input-id="adr-filter" name="filter" type="search" label="${L.filter}" hint="${L.candidates}"></gcds-input>
-      <ul class="adr-people">${candidates.map((u) => `<li data-q="${h(`${u.name} ${u.username}`.toLowerCase())}"><label>
+      <p>${caption(L.peopleHint)}</p><datalist id="adr-groups">${groups.map((g) => `<option value="${h(g)}">`).join('')}</datalist>
+      <ul class="adr-people">${candidates.map((u) => `<li data-q="${h(`${u.name} ${u.username} ${memberOf(u)?.group || ''}`.toLowerCase())}"><label>
         <input type="checkbox" value="${h(u.username)}" data-name="${h(u.name)}" ${listed.has(u.username) ? 'checked' : ''}>
-        ${h(u.name)} <span class="adr-handle">@${h(u.username)}${noAccess(u) ? ` · ${L.noAccessNote}` : ''}</span></label>${roles(u)}</li>`).join('')}</ul>
+        ${h(u.name)} <span class="adr-handle">@${h(u.username)}${noAccess(u) ? ` · ${L.noAccessNote}` : ''}</span></label>${fields(u)}</li>`).join('')}</ul>
       <gcds-button data-action="save-members">${L.save}</gcds-button>`
-    : `<ul class="adr-list">${members.map((u) => `<li>${h(u.name)} <span class="adr-handle">@${h(u.username)}</span> · ${L.roles[u.role]}</li>`).join('')}</ul>`}`;
+    : `<ul class="adr-list">${members.map((u) => `<li>${h(u.name)} <span class="adr-handle">@${h(u.username)}</span> · ${u.voting ? L.voting : L.nonVoting}${
+      u.group ? ` · ${h(u.group)}` : ''}</li>`).join('')}</ul>`}`;
 }
 
 function render() {
@@ -681,8 +684,10 @@ el.addEventListener('click', async (e) => {
       return;
     }
     if (b.dataset.action === 'save-members') {
-      const picked = [...el.querySelectorAll('.adr-people input:checked')]
-        .map((i) => ({ username: i.value, name: i.dataset.name, role: i.closest('li').querySelector('.adr-role').value }));
+      const picked = [...el.querySelectorAll('.adr-people input:checked')].map((i) => {
+        const li = i.closest('li');
+        return { username: i.value, name: i.dataset.name, voting: li.querySelector('.adr-voting').value === 'yes', group: li.querySelector('.adr-group').value.trim() };
+      });
       await gql(COMMIT, { p: c.project, b: rootRef, m: 'Update committee members', a: [{ action: hasList ? 'UPDATE' : 'CREATE',
         filePath: MEMBERS_FILE, content: `${JSON.stringify({ members: picked }, null, 2)}\n` }] });
       return go();

@@ -41,9 +41,11 @@
     .adr-people { list-style: none; padding: 0; margin: var(--gcds-spacing-200) 0 var(--gcds-spacing-400); }
     .adr-people li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gcds-spacing-100);
       padding: var(--gcds-spacing-100) 0; border-top: var(--gcds-border-width-sm) solid var(--gcds-color-grayscale-100); }
-    .adr-role { font: var(--gcds-font-text-small); color: var(--gcds-text-primary); background: var(--gcds-bg-white);
+    .adr-fields { display: flex; flex-wrap: wrap; gap: var(--gcds-spacing-100); }
+    .adr-fields :is(select, input) { font: var(--gcds-font-text-small); color: var(--gcds-text-primary); background: var(--gcds-bg-white);
       padding: var(--gcds-spacing-50) var(--gcds-spacing-100); border: var(--gcds-border-width-sm) solid var(--gcds-border-default); border-radius: var(--gcds-spacing-50); }
-    .adr-people input { width: 1.25em; height: 1.25em; margin-right: var(--gcds-spacing-150); vertical-align: middle; accent-color: var(--gcds-link-default); }
+    .adr-fields input { width: 14rem; max-width: 100%; }
+    .adr-people input[type="checkbox"] { width: 1.25em; height: 1.25em; margin-right: var(--gcds-spacing-150); vertical-align: middle; accent-color: var(--gcds-link-default); }
     .adr-handle { color: var(--gcds-text-secondary); font: var(--gcds-font-text-small); }
     /* Margin comments, like a word processor's: on wide screens each paragraph has a margin column beside it holding its
        threads as cards and a Comment button (shown on hover or keyboard focus with a mouse). Commented paragraphs are

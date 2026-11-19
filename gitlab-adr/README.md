@@ -15,7 +15,7 @@ The site is a few static files: `index.html`, `adr.js` and the deploy-time setti
 
    | Role | Can |
    |---|---|
-   | Reporter | read and comment; vote if on the [member list](#committee-members) |
+   | Reporter | read and comment; vote if a voting member on the [member list](#committee-members) |
    | Developer | also push meeting branches (authors) |
    | Maintainer | also record decisions, close meetings and edit the member list (the chair) |
 
@@ -97,9 +97,9 @@ To put proposals on a meeting's agenda, add their files to that meeting's branch
 
 ## Committee members
 
-Committee membership isn't the same as access to the GitLab project: authors, observers and administrators can open it too. The member list is `members.json` in the ADR folder, and only votes from people on it count.
+Committee membership isn't the same as access to the GitLab project: authors, observers and administrators can open it too. The member list is `members.json` in the ADR folder. It says whether each member is voting or non-voting and which group they represent, and only voting members' votes count.
 
-The chair keeps it on the site's **Members** page: type part of a name or username to find people, tick the members, pick each one's role (Chair, Vice-chair, Member or Observer), and save. Roles are shown next to names, on the Members page and in the chair view; they don't change who can vote or record decisions. The page lists everyone with Reporter access or higher, so nobody types usernames, and saving commits the file to the default branch, so GitLab keeps the history. To add someone without access, give them Reporter access in GitLab first. Until a list is saved, everyone with Reporter access or higher counts as a member.
+The chair keeps it on the site's **Members** page: type part of a name or username to find people, tick the members, set each one as **voting** or **non-voting**, type the **group** they represent (groups already on the list are suggested, to keep names consistent), and save. The filter also finds people by group. Groups are shown next to names on the Members page and in the chair view. The page lists everyone with Reporter access or higher, so nobody types usernames, and saving commits the file to the default branch, so GitLab keeps the history. To add someone without access, give them Reporter access in GitLab first. Until a list is saved, everyone with Reporter access or higher counts as a member.
 
 **When the list changes:** open proposals count the current list. Once the chair decides a proposal, the tally recorded with the decision is what the site shows from then on, so adding or removing members later never changes a past decision. GitLab's history of `members.json` shows who was a member when.
 
@@ -116,12 +116,12 @@ The committee's terms of reference are ADR 0000, `0000-terms-of-reference-en.md`
   - The file, rendered by GitLab. The address names the language: switching language moves to the `-fr.md` file without reloading, and a link to a `-fr.md` file opens in French. If one language's file is missing, a notice says so and the other language is shown.
   - The other proposals and files at the same meeting.
   - **Margin comments:** on wide screens each paragraph has a margin beside it, as in a word processor, with its comment threads as cards and a **Comment** button that appears on hover or keyboard focus. Commented paragraphs are highlighted. On narrow screens the margin sits below the paragraph.
-  - **Vote:** 👍 For and 👎 Against. Each member gets one vote per proposal, so voting For removes an Against and the other way round. Hovering over a vote shows who voted. Reactions from people not on the member list are shown as not counted. Voting stops once the chair records a decision.
+  - **Vote:** 👍 For and 👎 Against. Each member gets one vote per proposal, so voting For removes an Against and the other way round. Hovering over a vote shows who voted. Reactions from anyone who isn't a voting member, including non-voting members, are shown as not counted. Voting stops once the chair records a decision.
   - **Comments on this file:** threads about the proposal as a whole, plus margin comments that can't be placed beside a paragraph, such as those on a line that has since changed.
   - **Meeting discussion:** the merge request's general discussion.
   - For an accepted decision: the votes and comments from the meeting that accepted it, read-only.
 - **Members (`#/members`):** the committee, and for the chair the editor described in [Committee members](#committee-members).
-- **Chair view (`#/chair`):** for each open meeting, every proposal with For and Against (members' names), who hasn't voted yet, missing translations and the decision so far, plus GitLab's merge status. People with Maintainer access get:
+- **Chair view (`#/chair`):** for each open meeting, every proposal with For and Against (names and groups), which voting members haven't voted yet, missing translations and the decision so far, plus GitLab's merge status. People with Maintainer access get:
   - **Accept** and **Reject** on each proposal. Each posts the tally as a reply on the proposal's ballot comment, so GitLab keeps the record; the latest decision counts, so a mistake can be corrected. Accept needs both language files.
   - **Close meeting.** Proposals that weren't accepted are taken out of the merge request in one commit: new files are deleted and changed ones are put back as they are on the default branch. Then the merge request is merged, with a summary comment. If nothing was accepted, the merge request is closed instead. The site refuses to close a meeting if new commits arrived after the page loaded, so nothing unreviewed is merged.
 - **Comments made at a meeting:** when the chair comments anywhere, an **On behalf of** list lets them record what a member said. The comment is posted under the chair's account and starts with *On behalf of / Au nom de* and the member's name, written as plain text so no notification is sent.

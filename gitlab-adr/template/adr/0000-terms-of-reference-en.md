@@ -9,7 +9,7 @@ The committee reviews proposed architecture decisions for [scope, for example th
 ## Membership
 
 - **Chair:** [name or role]. The chair has the Maintainer role on this GitLab project.
-- **Members:** [names or roles]. The member list on the decision site (`members.json` in the decisions folder) is the official list, with each person's role (chair, vice-chair, member or observer): only votes from people on it count. Members need the Reporter role or higher to take part.
+- **Members:** [names or roles]. The member list on the decision site (`members.json` in the decisions folder) is the official list. It shows whether each member is voting or non-voting and which group they represent: only voting members' votes count. Members need the Reporter role or higher to take part.
 - **Authors:** anyone with the Developer role can put a proposal on a meeting's agenda. Others can ask a member to do it for them.
 - Access to the GitLab project doesn't make someone a member. Membership changes are made by [who], and the chair updates the member list on the decision site.
 

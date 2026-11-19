@@ -9,7 +9,7 @@ Le comité examine les décisions d'architecture proposées pour [portée, par e
 ## Composition
 
 - **Présidence :** [nom ou rôle]. La présidence a le rôle Maintainer dans ce projet GitLab.
-- **Membres :** [noms ou rôles]. La liste des membres du site des décisions (`members.json` dans le dossier des décisions) est la liste officielle et indique le rôle de chaque personne (présidence, vice-présidence, membre ou personne observatrice) : seuls les votes des personnes qui y figurent comptent. Les membres doivent avoir le rôle Reporter ou un rôle supérieur pour participer.
+- **Membres :** [noms ou rôles]. La liste des membres du site des décisions (`members.json` dans le dossier des décisions) est la liste officielle. Elle indique, pour chaque membre, le droit de vote (avec ou sans) et le groupe représenté : seuls les votes des membres votants comptent. Les membres doivent avoir le rôle Reporter ou un rôle supérieur pour participer.
 - **Auteurs :** toute personne ayant le rôle Developer peut inscrire une proposition à l'ordre du jour d'une réunion. Les autres peuvent demander à un membre de le faire en leur nom.
 - L'accès au projet GitLab ne fait pas d'une personne un membre. La composition est modifiée par [qui], et la présidence met à jour la liste des membres sur le site des décisions.
 
